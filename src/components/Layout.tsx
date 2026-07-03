@@ -17,8 +17,11 @@ export function Layout() {
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
             {t.nav.calendar}
           </NavLink>
-          <NavLink to="/categorias" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.categories}
+          <NavLink to="/alimentos" className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t.nav.foods}
+          </NavLink>
+          <NavLink to="/ajustes" className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t.nav.settings}
           </NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>

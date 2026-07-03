@@ -1,8 +1,12 @@
 :root {
+  /* Tokens de marca (los cambia el tema seleccionado) */
   --green: #6d9773;
   --green-dark: #4f7357;
   --orange: #f2a65a;
   --bg: #f6f7f4;
+  --tint: #eef3ec;
+
+  /* Tokens neutros comunes a todos los temas */
   --surface: #ffffff;
   --text: #26302a;
   --muted: #78857c;
@@ -15,6 +19,36 @@
   --radius: 12px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 16px rgba(0, 0, 0, 0.04);
   --font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --- Temas de color (elegibles por cada usuario) ------------------------- */
+:root[data-theme='verde'] {
+  --green: #6d9773;
+  --green-dark: #4f7357;
+  --orange: #f2a65a;
+  --bg: #f6f7f4;
+  --tint: #eef3ec;
+}
+:root[data-theme='rosa'] {
+  --green: #c76b98;
+  --green-dark: #a44d78;
+  --orange: #f2a65a;
+  --bg: #faf5f8;
+  --tint: #f6e9f0;
+}
+:root[data-theme='azul'] {
+  --green: #4f83cc;
+  --green-dark: #3a6199;
+  --orange: #f2a65a;
+  --bg: #f3f6fb;
+  --tint: #e6eef9;
+}
+:root[data-theme='neutro'] {
+  --green: #64748b;
+  --green-dark: #475569;
+  --orange: #d99a5b;
+  --bg: #f5f6f7;
+  --tint: #e9ecef;
 }
 
 * {
@@ -163,7 +197,7 @@ select:focus {
   align-items: center;
   justify-content: center;
   padding: 1.5rem;
-  background: linear-gradient(160deg, #eef3ec, #f6f7f4);
+  background: linear-gradient(160deg, var(--tint), var(--bg));
 }
 .auth-card {
   background: var(--surface);
@@ -832,5 +866,223 @@ select:focus {
   }
   .month-daynum {
     font-size: 0.75rem;
+  }
+}
+
+/* ====== V2: ajustes, temas, texturas, notas, copiar, alimentos ========== */
+
+/* --- Página de ajustes --- */
+.settings-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.1rem;
+}
+.settings-section h2 {
+  font-size: 1.05rem;
+}
+
+/* --- Temas --- */
+.theme-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.7rem;
+}
+.theme-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 0.55rem 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.theme-card.active {
+  border-color: var(--green);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--green) 25%, transparent);
+}
+.theme-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+/* --- Crear categoría --- */
+.cat-new {
+  margin-top: 1rem;
+  border-top: 1px dashed var(--border);
+  padding-top: 0.9rem;
+}
+.cat-new h3 {
+  font-size: 0.95rem;
+  margin-bottom: 0.5rem;
+}
+.cat-new-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.cat-new-row input[type='text'] {
+  flex: 1 1 180px;
+}
+
+/* --- Selector de textura (segmentado) --- */
+.texture-select {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.texture-select button {
+  border: none;
+  background: var(--surface);
+  padding: 0.4rem 0.5rem;
+  font-size: 1rem;
+  line-height: 1;
+  border-right: 1px solid var(--border);
+}
+.texture-select button:last-child {
+  border-right: none;
+}
+.texture-select button.active {
+  background: color-mix(in srgb, var(--green) 22%, white);
+}
+.texture-icon {
+  font-size: 0.9rem;
+  line-height: 1;
+}
+.new-badge {
+  font-size: 0.8rem;
+  line-height: 1;
+  margin-left: 2px;
+}
+.new-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.new-check input {
+  margin: 0;
+}
+
+/* --- Notas del día / copiar --- */
+.day-note {
+  width: 100%;
+  font-family: inherit;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  resize: vertical;
+}
+.copy-row .copy-label,
+.copy-week .copy-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--muted);
+  margin-bottom: 0.35rem;
+}
+.copy-controls {
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.copy-week {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  margin-bottom: 0.9rem;
+}
+.copy-week .copy-label {
+  margin-bottom: 0;
+}
+
+/* --- Alimentos probados --- */
+.foods-group {
+  margin-bottom: 1.4rem;
+}
+.foods-cat {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 1.05rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 0.7rem;
+}
+.foods-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0.7rem;
+}
+.food-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.8rem;
+}
+.food-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.food-name {
+  font-weight: 700;
+}
+.food-reactions {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.reaction-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  color: var(--text);
+}
+.reaction-btn.active {
+  background: color-mix(in srgb, var(--green) 20%, white);
+  border-color: var(--green);
+  font-weight: 700;
+}
+.reaction-label {
+  font-size: 0.75rem;
+}
+.food-notes {
+  width: 100%;
+  font-size: 0.85rem;
+}
+
+@media (max-width: 480px) {
+  .reaction-label {
+    display: none;
+  }
+  .reaction-btn {
+    font-size: 1rem;
+    padding: 0.3rem 0.5rem;
   }
 }

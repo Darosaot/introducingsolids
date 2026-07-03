@@ -7,7 +7,7 @@ import {
   WeekView,
   YearView,
 } from '../components/CalendarViews';
-import { fetchMealsInRange } from '../lib/data';
+import { copyWeek, fetchMealsInRange } from '../lib/data';
 import {
   addDays,
   addMonths,
@@ -15,11 +15,13 @@ import {
   addYears,
   dayKey,
   fmt,
+  fromKey,
   monthGrid,
   weekDays,
   yearMonths,
 } from '../lib/date';
 import { t } from '../lib/i18n';
+import { useAuth } from '../context/AuthContext';
 import type { MealItem } from '../lib/types';
 
 type View = 'day' | 'week' | 'month' | 'year';
@@ -56,11 +58,14 @@ function title(view: View, cursor: Date): string {
 }
 
 export function CalendarPage() {
+  const { session } = useAuth();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [meals, setMeals] = useState<MealItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [copyWeekTo, setCopyWeekTo] = useState('');
+  const [copyWeekMsg, setCopyWeekMsg] = useState('');
 
   const [from, to] = rangeFor(view, cursor);
 
@@ -107,6 +112,16 @@ export function CalendarPage() {
     });
   }
 
+  async function handleCopyWeek() {
+    if (!session || !copyWeekTo) return;
+    const src = dayKey(weekDays(cursor)[0]);
+    const dst = dayKey(weekDays(fromKey(copyWeekTo))[0]);
+    const n = await copyWeek(src, dst, session.user.id);
+    setCopyWeekMsg(n > 0 ? `✓ ${t.meals.copied} (${n})` : t.meals.nothingToCopy);
+    setTimeout(() => setCopyWeekMsg(''), 2500);
+    if (n > 0) void load();
+  }
+
   const views: View[] = ['day', 'week', 'month', 'year'];
 
   return (
@@ -140,6 +155,22 @@ export function CalendarPage() {
       </div>
 
       <h1 className="cal-title">{title(view, cursor)}</h1>
+
+      {view === 'week' && (
+        <div className="copy-week">
+          <label className="copy-label">{t.meals.copyWeekTo}</label>
+          <input
+            type="date"
+            value={copyWeekTo}
+            onChange={(e) => setCopyWeekTo(e.target.value)}
+            aria-label={t.meals.copyWeekTo}
+          />
+          <button className="ghost" onClick={handleCopyWeek} disabled={!copyWeekTo}>
+            {t.meals.copyWeek}
+          </button>
+          {copyWeekMsg && <span className="ok-text small">{copyWeekMsg}</span>}
+        </div>
+      )}
 
       <Legend />
 

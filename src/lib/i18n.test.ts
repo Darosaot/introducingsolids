@@ -24,4 +24,27 @@ describe('i18n / franjas de comida', () => {
     expect(t.nav.calendar).toBe('Calendario');
     expect(t.nav.signOut).toBe('Cerrar sesión');
   });
+
+  it('define texturas con etiqueta e icono', () => {
+    expect(t.textures.puree.label).toBe('Puré');
+    expect(t.textures.mashed.label).toBe('Machacado');
+    expect(t.textures.chunks.label).toBe('Trozos');
+    for (const k of ['puree', 'mashed', 'chunks'] as const) {
+      expect(t.textures[k].icon.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('define las 4 reacciones en español', () => {
+    expect(t.reactions.liked.label).toBe('Le gustó');
+    expect(t.reactions.disliked.label).toBe('No le gustó');
+    expect(t.reactions.reaction.label).toBe('Reacción');
+    expect(t.reactions.ok.label).toBe('Todo bien');
+  });
+
+  it('define los 4 temas de color', () => {
+    expect(t.themes.verde).toBe('Verde');
+    expect(t.themes.rosa).toBe('Rosa');
+    expect(t.themes.azul).toBe('Azul');
+    expect(t.themes.neutro).toBe('Neutro');
+  });
 });
