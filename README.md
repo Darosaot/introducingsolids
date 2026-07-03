@@ -21,9 +21,22 @@ clasifica por categoría con un color personalizable.
   Cereales, Otros) — los colores y nombres se pueden **personalizar**.
 - 🔐 **Autenticación** con Supabase (iniciar y cerrar sesión).
 - 👤 **Portal de administración**: ver, crear, editar rol, deshabilitar y eliminar usuarios.
-- 🛡️ **Seguridad**: Row Level Security — cada usuario solo accede a sus propios
-  datos. La clave de servicio nunca se expone en el navegador.
 - 📱 Diseño limpio y **responsive** (móvil y escritorio).
+
+### Novedades V2
+
+- 🏠 **Diario compartido del hogar**: todos los usuarios ven y editan el mismo
+  diario del bebé (comidas, categorías y notas son comunes).
+- 🎨 **Temas de color** elegibles por usuario: **Verde, Rosa, Azul, Neutro**.
+- ➕ **Crear y borrar categorías** (además de renombrar/recolorear).
+- 🥣 **Textura por alimento**: puré / machacado / trozos, con icono.
+- ✨ **Alimento nuevo**: marca la primera vez que prueba un alimento.
+- 📝 **Notas por día** (reacciones, cómo comió…).
+- 📋 **Copiar día / semana** a otra fecha, para reutilizar menús.
+- 🥗 **Pestaña "Alimentos probados"**: todos los alimentos por categoría, con
+  **reacción por alimento** (le gustó / no le gustó / reacción / todo bien) y notas.
+- 🛡️ **Seguridad**: Row Level Security; la clave de servicio nunca se expone en el
+  navegador. Los datos del hogar son accesibles solo por usuarios activos.
 
 ---
 
@@ -36,7 +49,10 @@ clasifica por categoría con un color personalizable.
 │   └── admin-users.ts               # gestión de usuarios (usa la clave de servicio)
 ├── supabase/migrations/
 │   ├── 0001_init.sql                # tablas, RLS, triggers, categorías por defecto
-│   └── 0002_harden_functions.sql    # endurecimiento de funciones SECURITY DEFINER
+│   ├── 0002_harden_functions.sql    # endurecimiento de funciones SECURITY DEFINER
+│   ├── 0003_shared_household_and_v2.sql  # hogar compartido, temas, textura, notas
+│   └── 0004_food_status.sql         # reacción/estado por alimento
+├── supabase/seed_july2026.sql       # menú de ejemplo (julio 2026)
 └── src/
     ├── context/                     # AuthContext, CategoriesContext
     ├── components/                   # Calendario, DayModal, Layout, Legend…
@@ -93,6 +109,9 @@ npm run preview      # sirve el build de producción
 2. En **SQL Editor**, ejecuta en orden los ficheros de `supabase/migrations/`:
    - `0001_init.sql`
    - `0002_harden_functions.sql`
+   - `0003_shared_household_and_v2.sql`
+   - `0004_food_status.sql`
+   - (opcional) `supabase/seed_july2026.sql` para cargar un menú de ejemplo.
 
    (O con la CLI de Supabase: `supabase db push`.)
 
