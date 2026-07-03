@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateFoods,
+  allergenExposureStreaks,
   allergenIntroductionStatuses,
   allergenProgress,
   buildDashboardSummary,
@@ -221,6 +222,43 @@ describe('allergenProgress / buildDashboardSummary', () => {
     expect(summary.reactionCountToday).toBe(1);
     expect(summary.hasDayNote).toBe(true);
     expect(summary.plannedToday).toHaveLength(1);
+  });
+
+  it('cuenta la racha máxima de días consecutivos de un alérgeno (protocolo 3 días)', () => {
+    const meals = [
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-01' }),
+      meal({ name: 'Tortilla', name_key: 'tortilla', day: '2026-07-02' }),
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-03' }),
+    ];
+    const streaks = allergenExposureStreaks(meals);
+    expect(streaks.get('egg')?.maxConsecutive).toBe(3);
+  });
+
+  it('una interrupción reinicia la racha de días consecutivos', () => {
+    const meals = [
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-01' }),
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-02' }),
+      // hueco el día 3
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-04' }),
+    ];
+    expect(allergenExposureStreaks(meals).get('egg')?.maxConsecutive).toBe(2);
+  });
+
+  it('marca streakComplete cuando la racha alcanza 3 días', () => {
+    const meals = [
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-01' }),
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-02' }),
+      meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-03' }),
+    ];
+    const foods = aggregateFoods(meals, []);
+    const statuses = allergenIntroductionStatuses(foods, allergenExposureStreaks(meals));
+    const egg = statuses.find((row) => row.key === 'egg')!;
+    expect(egg.consecutiveDays).toBe(3);
+    expect(egg.streakComplete).toBe(true);
+
+    const dairy = statuses.find((row) => row.key === 'dairy')!;
+    expect(dairy.consecutiveDays).toBe(0);
+    expect(dairy.streakComplete).toBe(false);
   });
 
   it('el resumen de hoy ignora alimentos futuros al contar alérgenos', () => {

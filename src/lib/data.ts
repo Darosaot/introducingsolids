@@ -643,9 +643,63 @@ export interface AllergenIntroductionStatus {
   firstDay: string | null;
   lastDay: string | null;
   foods: string[];
+  /** Máxima racha de días consecutivos en que se ofreció el alérgeno. */
+  consecutiveDays: number;
+  /** La guía pide ≥3 días seguidos para dar por completada la introducción. */
+  streakComplete: boolean;
 }
 
-export function allergenIntroductionStatuses(foods: FoodTried[]): AllergenIntroductionStatus[] {
+export interface AllergenStreak {
+  days: string[];
+  maxConsecutive: number;
+}
+
+/** Días consecutivos que exige la guía (§5) para introducir un alérgeno. */
+export const ALLERGEN_STREAK_TARGET = 3;
+
+/** Racha más larga de días de calendario consecutivos en una lista ordenada de fechas. */
+function longestConsecutiveRun(sortedDays: string[]): number {
+  let best = 0;
+  let run = 0;
+  let prev: string | null = null;
+  for (const day of sortedDays) {
+    if (prev && dayKey(addDays(dateFromKey(prev), 1)) === day) run += 1;
+    else run = 1;
+    if (run > best) best = run;
+    prev = day;
+  }
+  return best;
+}
+
+/**
+ * Para cada alérgeno (inferido del nombre), los días en que se ofreció y la
+ * racha más larga de días consecutivos. Base del protocolo de 3 días de la guía.
+ */
+export function allergenExposureStreaks(meals: MealItem[]): Map<AllergenKey, AllergenStreak> {
+  const daysByKey = new Map<AllergenKey, Set<string>>();
+  for (const meal of meals) {
+    for (const key of inferAllergenKeys(meal.name)) {
+      let set = daysByKey.get(key);
+      if (!set) {
+        set = new Set<string>();
+        daysByKey.set(key, set);
+      }
+      set.add(meal.day);
+    }
+  }
+
+  const result = new Map<AllergenKey, AllergenStreak>();
+  for (const [key, set] of daysByKey) {
+    const days = Array.from(set).sort();
+    result.set(key, { days, maxConsecutive: longestConsecutiveRun(days) });
+  }
+  return result;
+}
+
+export function allergenIntroductionStatuses(
+  foods: FoodTried[],
+  streaks?: Map<AllergenKey, AllergenStreak>,
+): AllergenIntroductionStatus[] {
   const byKey = new Map<AllergenKey, AllergenIntroductionStatus>(
     ALLERGENS.map((allergen) => [
       allergen.key,
@@ -656,6 +710,8 @@ export function allergenIntroductionStatuses(foods: FoodTried[]): AllergenIntrod
         firstDay: null,
         lastDay: null,
         foods: [],
+        consecutiveDays: 0,
+        streakComplete: false,
       },
     ]),
   );
@@ -668,6 +724,15 @@ export function allergenIntroductionStatuses(foods: FoodTried[]): AllergenIntrod
       if (!row.firstDay || food.firstDay < row.firstDay) row.firstDay = food.firstDay;
       if (!row.lastDay || food.lastDay > row.lastDay) row.lastDay = food.lastDay;
       if (!row.foods.includes(food.name)) row.foods.push(food.name);
+    }
+  }
+
+  if (streaks) {
+    for (const [key, streak] of streaks) {
+      const row = byKey.get(key);
+      if (!row) continue;
+      row.consecutiveDays = streak.maxConsecutive;
+      row.streakComplete = streak.maxConsecutive >= ALLERGEN_STREAK_TARGET;
     }
   }
 

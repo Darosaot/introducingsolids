@@ -12,9 +12,12 @@ import { SafetyBadge } from '../components/SafetyBadge';
 import {
   addMeal,
   ALLERGENS,
+  ALLERGEN_STREAK_TARGET,
+  allergenExposureStreaks,
   allergenIntroductionStatuses,
   buildDashboardSummary,
   deleteMeal,
+  fetchAllMeals,
   fetchBabyProfile,
   fetchDayNote,
   fetchFoodsTried,
@@ -28,7 +31,7 @@ import {
 } from '../lib/data';
 import { dayKey, fmt, fromKey } from '../lib/date';
 import { MEAL_SLOTS, t } from '../lib/i18n';
-import type { BabyProfile, Category, DashboardSummary, FoodTried, MealItem, MealSlot, PlannedMeal } from '../lib/types';
+import type { AllergenKey, BabyProfile, Category, DashboardSummary, FoodTried, MealItem, MealSlot, PlannedMeal } from '../lib/types';
 
 export function TodayPage() {
   const { categories } = useCategories();
@@ -39,6 +42,7 @@ export function TodayPage() {
   const [meals, setMeals] = useState<MealItem[]>([]);
   const [planned, setPlanned] = useState<PlannedMeal[]>([]);
   const [foods, setFoods] = useState<FoodTried[]>([]);
+  const [allMeals, setAllMeals] = useState<MealItem[]>([]);
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [showDay, setShowDay] = useState(false);
@@ -46,17 +50,19 @@ export function TodayPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [baby, todayMeals, note, foodRows, plannedToday] = await Promise.all([
+      const [baby, todayMeals, note, foodRows, plannedToday, everyMeal] = await Promise.all([
         fetchBabyProfile().catch(() => null),
         fetchMealsInRange(todayKey, todayKey),
         fetchDayNote(todayKey).catch(() => null),
         fetchFoodsTried(),
         fetchPlannedMealsInRange(todayKey, todayKey).catch(() => []),
+        fetchAllMeals().catch(() => []),
       ]);
       setProfile(baby);
       setMeals(todayMeals);
       setPlanned(plannedToday);
       setFoods(foodRows);
+      setAllMeals(everyMeal);
       setSummary(buildDashboardSummary({ todayMeals, dayNote: note, foods: foodRows, plannedToday, todayKey }));
     } finally {
       setLoading(false);
@@ -83,7 +89,14 @@ export function TodayPage() {
   }, [categories]);
   const plateToday = useMemo(() => plateStatusForMeals(meals, categoryKeyById), [meals, categoryKeyById]);
   const introducedFoods = useMemo(() => foodsIntroducedBy(foods, todayKey), [foods, todayKey]);
-  const allergenStatuses = useMemo(() => allergenIntroductionStatuses(introducedFoods), [introducedFoods]);
+  const allergenStreaks = useMemo(
+    () => allergenExposureStreaks(allMeals.filter((meal) => meal.day <= todayKey)),
+    [allMeals, todayKey],
+  );
+  const allergenStatuses = useMemo(
+    () => allergenIntroductionStatuses(introducedFoods, allergenStreaks),
+    [introducedFoods, allergenStreaks],
+  );
 
   const focusQuickAdd = useCallback(() => {
     quickInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -114,7 +127,7 @@ export function TodayPage() {
       ) : (
         <>
           {needsBabyProfileSetup(profile) && <BabySetupNudge />}
-          <QuickAddMeal todayKey={todayKey} foods={introducedFoods} ageMonths={ageMonths} inputRef={quickInputRef} onSaved={load} />
+          <QuickAddMeal todayKey={todayKey} foods={introducedFoods} todayMeals={meals} ageMonths={ageMonths} inputRef={quickInputRef} onSaved={load} />
 
           <section className="today-grid">
             <div className="today-main-panel">
@@ -241,12 +254,14 @@ function buildQuickSuggestions(foods: FoodTried[], categories: Category[]): Quic
 function QuickAddMeal({
   todayKey,
   foods,
+  todayMeals,
   ageMonths,
   inputRef,
   onSaved,
 }: {
   todayKey: string;
   foods: FoodTried[];
+  todayMeals: MealItem[];
   ageMonths: number | null;
   inputRef: React.RefObject<HTMLInputElement>;
   onSaved: () => void;
@@ -270,6 +285,32 @@ function QuickAddMeal({
   const alreadyTried = foods.some((food) => food.nameKey === normalizedName);
   const allergenKeys = useMemo(() => inferAllergenKeys(name), [name]);
   const safetyWarnings = useMemo(() => foodSafetyWarnings(name, ageMonths), [name, ageMonths]);
+
+  // Alérgenos ya introducidos antes de hoy (protocolo de 3 días, guía §5).
+  const introducedBeforeToday = useMemo(() => {
+    const keys = new Set<AllergenKey>();
+    for (const food of foods) {
+      if (food.firstDay < todayKey) for (const key of food.allergenKeys) keys.add(key);
+    }
+    return keys;
+  }, [foods, todayKey]);
+  const newAllergenKeys = useMemo(
+    () => allergenKeys.filter((key) => !introducedBeforeToday.has(key)),
+    [allergenKeys, introducedBeforeToday],
+  );
+  // Otros alérgenos nuevos (distintos) ya ofrecidos hoy: no dos nuevos a la vez.
+  const otherNewAllergensToday = useMemo(() => {
+    const labels = new Set<string>();
+    for (const meal of todayMeals) {
+      if (foodNameKey(meal.name) === normalizedName) continue;
+      for (const key of inferAllergenKeys(meal.name)) {
+        if (!introducedBeforeToday.has(key) && !allergenKeys.includes(key)) labels.add(tAllergenLabel(key));
+      }
+    }
+    return Array.from(labels);
+  }, [todayMeals, normalizedName, introducedBeforeToday, allergenKeys]);
+  const dinnerAllergenWarning = newAllergenKeys.length > 0 && slot === 'dinner';
+  const twoNewAllergensWarning = newAllergenKeys.length > 0 && otherNewAllergensToday.length > 0;
   const recentNewFood = useMemo(() => {
     if (!normalizedName) return null;
     const today = fromKey(todayKey);
@@ -410,6 +451,14 @@ function QuickAddMeal({
             {warning.severity === 'avoid' ? '⛔' : '⚠️'} {warning.label}: {warning.message}
           </strong>
         ))}
+        {dinnerAllergenWarning && (
+          <strong className="safety-note is-caution">⚠️ {t.today.allergenDinnerWarn}</strong>
+        )}
+        {twoNewAllergensWarning && (
+          <strong className="safety-note is-caution">
+            ⚠️ {t.today.allergenTwoNewWarn}: {otherNewAllergensToday.join(', ')}
+          </strong>
+        )}
         {recentNewFood && <span>Nuevo reciente: {recentNewFood.name}. Evita mezclar nuevas introducciones hoy si estás observando tolerancia.</span>}
       </div>
     </section>
@@ -481,8 +530,14 @@ function AllergenGuide({ statuses }: { statuses: ReturnType<typeof allergenIntro
           <strong>{t.today.introducedAllergens}</strong>
           <div className="mini-list">
             {introduced.slice(0, 5).map((status) => (
-              <span className="mini-list-item" key={status.key}>
-                {status.label}{status.firstDay ? ` · ${fmt.weekdayDay(fromKey(status.firstDay))}` : ''}
+              <span
+                className={`mini-list-item ${status.streakComplete ? 'streak-done' : 'streak-partial'}`}
+                key={status.key}
+                title={status.firstDay ? `${t.foods.firstTried}: ${fmt.weekdayDay(fromKey(status.firstDay))}` : undefined}
+              >
+                {status.label} · {status.streakComplete
+                  ? `✅ ${ALLERGEN_STREAK_TARGET}/${ALLERGEN_STREAK_TARGET}`
+                  : `${status.consecutiveDays}/${ALLERGEN_STREAK_TARGET} ${t.today.allergenDays}`}
               </span>
             ))}
             {introduced.length === 0 && <span className="mini-list-item">Ninguno aún</span>}
