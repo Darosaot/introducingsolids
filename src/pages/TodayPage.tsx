@@ -7,6 +7,7 @@ import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
 import { ageInMonthsOn, formatBabyAge, formatSolidsTime, needsBabyProfileSetup } from '../lib/baby';
 import { foodSafetyWarnings } from '../lib/safety';
+import { plateStatusForMeals } from '../lib/nutrition';
 import { SafetyBadge } from '../components/SafetyBadge';
 import {
   addMeal,
@@ -30,6 +31,7 @@ import { MEAL_SLOTS, t } from '../lib/i18n';
 import type { BabyProfile, Category, DashboardSummary, FoodTried, MealItem, MealSlot, PlannedMeal } from '../lib/types';
 
 export function TodayPage() {
+  const { categories } = useCategories();
   const [today] = useState(() => new Date());
   const todayKey = dayKey(today);
   const quickInputRef = useRef<HTMLInputElement>(null);
@@ -74,6 +76,12 @@ export function TodayPage() {
   const babyAge = formatBabyAge(profile?.birth_date, today);
   const solidsTime = formatSolidsTime(profile?.solids_start_date, today);
   const ageMonths = ageInMonthsOn(profile?.birth_date, today);
+  const categoryKeyById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const category of categories) map.set(category.id, category.key);
+    return map;
+  }, [categories]);
+  const plateToday = useMemo(() => plateStatusForMeals(meals, categoryKeyById), [meals, categoryKeyById]);
   const introducedFoods = useMemo(() => foodsIntroducedBy(foods, todayKey), [foods, todayKey]);
   const allergenStatuses = useMemo(() => allergenIntroductionStatuses(introducedFoods), [introducedFoods]);
 
@@ -158,6 +166,7 @@ export function TodayPage() {
                 <Metric value={summary?.reactionCountToday ?? 0} label={t.today.reactionsToday} />
                 <Metric value={summary?.hasDayNote ? 'Sí' : 'No'} label={t.today.noteToday} />
               </div>
+              <PlateCheck status={plateToday} hasMeals={meals.length > 0} />
               <div className="allergen-progress">
                 <span>{t.today.allergens}</span>
                 <strong>
@@ -422,6 +431,32 @@ function BabySetupNudge() {
         {t.baby.setupAction}
       </Link>
     </section>
+  );
+}
+
+function PlateCheck({ status, hasMeals }: { status: ReturnType<typeof plateStatusForMeals>; hasMeals: boolean }) {
+  const items: Array<{ key: keyof typeof status; label: string }> = [
+    { key: 'iron', label: t.today.plateIron },
+    { key: 'energy', label: t.today.plateEnergy },
+    { key: 'fruitVeg', label: t.today.plateFruitVeg },
+  ];
+  return (
+    <div className="plate-check">
+      <div className="plate-check-head">
+        <span>{t.today.plateTitle}</span>
+        {hasMeals && !status.iron && <strong className="plate-warn">{t.today.plateNoIron}</strong>}
+      </div>
+      <div className="plate-check-items">
+        {items.map((item) => (
+          <span
+            key={item.key}
+            className={`plate-item ${status[item.key] ? 'is-done' : 'is-missing'}`}
+          >
+            {status[item.key] ? '✅' : '⬜'} {item.label}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 
