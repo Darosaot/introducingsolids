@@ -15,10 +15,16 @@ export function Layout() {
 
         <nav className="topnav">
           <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t.nav.today}
+          </NavLink>
+          <NavLink to="/calendario" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t.nav.calendar}
           </NavLink>
           <NavLink to="/alimentos" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t.nav.foods}
+          </NavLink>
+          <NavLink to="/planificar" className={({ isActive }) => (isActive ? 'active' : '')}>
+            {t.nav.planner}
           </NavLink>
           <NavLink to="/ajustes" className={({ isActive }) => (isActive ? 'active' : '')}>
             {t.nav.settings}

@@ -1,17 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
 import {
   addMeal,
   copyDay,
   deleteMeal,
   fetchDayNote,
+  previewCopyDay,
   updateMeal,
   upsertDayNote,
+  upsertFoodStatus,
+  type CopyMode,
 } from '../lib/data';
 import { dayKey, fmt } from '../lib/date';
-import { MEAL_SLOTS, TEXTURES, t } from '../lib/i18n';
-import type { MealItem, MealSlot, Texture } from '../lib/types';
+import { MEAL_SLOTS, REACTIONS, TEXTURES, t } from '../lib/i18n';
+import type { MealItem, MealSlot, Reaction, Texture } from '../lib/types';
 import { CategoryDot } from './CategoryDot';
 
 interface Props {
@@ -21,102 +26,182 @@ interface Props {
   onChanged: () => void;
 }
 
+const COMMON_FOODS = ['Plátano', 'Aguacate', 'Huevo', 'Patata', 'Pera', 'Pan'];
+
 export function DayModal({ day, meals, onClose, onChanged }: Props) {
   const { session } = useAuth();
+  const { choose, confirm } = useConfirm();
+  const { showToast } = useToast();
   const [note, setNote] = useState('');
   const [noteLoaded, setNoteLoaded] = useState(false);
-  const [noteSaved, setNoteSaved] = useState(false);
+  const [noteState, setNoteState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [copyTo, setCopyTo] = useState('');
-  const [copyMsg, setCopyMsg] = useState('');
+  const [addingSlot, setAddingSlot] = useState<MealSlot | null>(null);
+  const [editing, setEditing] = useState<MealItem | null>(null);
+
+  const key = dayKey(day);
+  const dayItems = useMemo(() => meals.filter((m) => m.day === key), [meals, key]);
+  const suggestions = useMemo(() => {
+    const names = new Set<string>();
+    for (const meal of meals) {
+      if (meal.name.trim()) names.add(meal.name.trim());
+    }
+    for (const name of COMMON_FOODS) names.add(name);
+    return Array.from(names).slice(0, 10);
+  }, [meals]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === 'Escape' && !addingSlot && !editing) onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onClose]);
+  }, [addingSlot, editing, onClose]);
 
-  // Carga la nota del día al abrir.
   useEffect(() => {
     let active = true;
-    fetchDayNote(dayKey(day))
+    setNoteLoaded(false);
+    fetchDayNote(key)
       .then((n) => {
         if (active) {
           setNote(n?.note ?? '');
           setNoteLoaded(true);
         }
       })
-      .catch(() => active && setNoteLoaded(true));
+      .catch(() => {
+        if (active) {
+          setNoteLoaded(true);
+          setNoteState('error');
+        }
+      });
     return () => {
       active = false;
     };
-  }, [day]);
-
-  const dayItems = meals.filter((m) => m.day === dayKey(day));
+  }, [key]);
 
   async function saveNote() {
     if (!session || !noteLoaded) return;
-    await upsertDayNote(dayKey(day), note, session.user.id);
-    setNoteSaved(true);
-    setTimeout(() => setNoteSaved(false), 1500);
+    setNoteState('saving');
+    try {
+      await upsertDayNote(key, note, session.user.id);
+      setNoteState('saved');
+      window.setTimeout(() => setNoteState('idle'), 1600);
+    } catch {
+      setNoteState('error');
+    }
+  }
+
+  async function handleDelete(item: MealItem) {
+    const ok = await confirm({
+      title: t.confirm.deleteFood,
+      body: `${item.name} se eliminará de ${fmt.fullDay(day)}.`,
+      choices: [
+        { value: 'confirm', label: t.confirm.delete, variant: 'danger' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (!ok) return;
+    await deleteMeal(item.id);
+    showToast({ title: 'Alimento eliminado', tone: 'ok' });
+    onChanged();
   }
 
   async function handleCopy() {
     if (!session || !copyTo) return;
-    const n = await copyDay(dayKey(day), copyTo, session.user.id);
-    setCopyMsg(n > 0 ? `✓ ${t.meals.copied}` : t.meals.nothingToCopy);
-    setTimeout(() => setCopyMsg(''), 2000);
-    if (n > 0) onChanged();
+    const preview = await previewCopyDay(key, copyTo);
+    if (preview.sourceCount === 0) {
+      showToast({ title: t.meals.nothingToCopy, tone: 'info' });
+      return;
+    }
+    const choice = await choose({
+      title: t.confirm.copyDay,
+      body:
+        `Se copiarán ${preview.sourceCount} alimentos a ${preview.destinationFrom}. ` +
+        (preview.hasConflicts
+          ? `El destino ya tiene ${preview.destinationCount} alimentos.`
+          : 'El destino está vacío.'),
+      choices: [
+        { value: 'append', label: t.meals.append, variant: 'primary' },
+        { value: 'replace', label: t.meals.replace, variant: 'danger' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (choice !== 'append' && choice !== 'replace') return;
+    const n = await copyDay(key, copyTo, session.user.id, choice as CopyMode);
+    showToast({ title: `${t.meals.copied} (${n})`, tone: 'ok' });
+    onChanged();
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop day-detail-backdrop" onClick={onClose}>
       <div
-        className="modal"
+        className="modal day-detail"
         role="dialog"
         aria-modal="true"
         aria-label={fmt.fullDay(day)}
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="modal-head">
-          <h2>{fmt.fullDay(day)}</h2>
+        <header className="modal-head day-detail-head">
+          <div>
+            <p className="eyebrow">{t.nav.today}</p>
+            <h2>{fmt.fullDay(day)}</h2>
+          </div>
           <button className="icon-btn" onClick={onClose} aria-label={t.meals.close}>
-            ✕
+            Cerrar
           </button>
         </header>
 
-        <div className="modal-body">
-          {MEAL_SLOTS.map((slot) => (
-            <SlotEditor
-              key={slot}
-              slot={slot}
-              day={day}
-              items={dayItems.filter((m) => m.slot === slot)}
-              onChanged={onChanged}
-            />
-          ))}
+        <div className="modal-body day-detail-body">
+          <section className="day-summary-strip">
+            <div>
+              <strong>{dayItems.length}</strong>
+              <span>{t.today.foodsToday}</span>
+            </div>
+            <div>
+              <strong>{dayItems.filter((m) => m.is_new).length}</strong>
+              <span>{t.today.newToday}</span>
+            </div>
+            <div>
+              <strong>{dayItems.filter((m) => m.reaction === 'reaction').length}</strong>
+              <span>{t.today.reactionsToday}</span>
+            </div>
+          </section>
 
-          {/* Notas del día */}
-          <section className="slot">
-            <h3 className="slot-title">{t.meals.dayNotes}</h3>
+          <div className="meal-timeline">
+            {MEAL_SLOTS.map((slot) => (
+              <MealSlotSection
+                key={slot}
+                slot={slot}
+                items={dayItems.filter((m) => m.slot === slot)}
+                onAdd={() => setAddingSlot(slot)}
+                onEdit={setEditing}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+
+          <section className="day-notes-panel">
+            <div className="section-title-row">
+              <h3>{t.meals.dayNotes}</h3>
+              {noteState === 'saving' && <span className="muted small">Guardando…</span>}
+              {noteState === 'saved' && <span className="ok-text small">✓ {t.categories.saved}</span>}
+              {noteState === 'error' && <span className="error-text small">No se pudo guardar</span>}
+            </div>
             <textarea
               className="day-note"
               value={note}
               onChange={(e) => {
                 setNote(e.target.value);
-                setNoteSaved(false);
+                setNoteState('idle');
               }}
               onBlur={saveNote}
               placeholder={t.meals.dayNotesPlaceholder}
-              rows={2}
+              rows={3}
               aria-label={t.meals.dayNotes}
             />
-            {noteSaved && <span className="ok-text small">✓ {t.categories.saved}</span>}
           </section>
 
-          {/* Copiar día */}
-          <section className="slot copy-row">
+          <section className="copy-row">
             <label className="copy-label">{t.meals.copyDayTo}</label>
             <div className="copy-controls">
               <input
@@ -128,259 +213,266 @@ export function DayModal({ day, meals, onClose, onChanged }: Props) {
               <button className="ghost" onClick={handleCopy} disabled={!copyTo}>
                 {t.meals.copyDay}
               </button>
-              {copyMsg && <span className="ok-text small">{copyMsg}</span>}
             </div>
           </section>
         </div>
+
+        {(addingSlot || editing) && session && (
+          <AddFoodSheet
+            day={day}
+            slot={addingSlot ?? editing?.slot ?? 'breakfast'}
+            item={editing}
+            suggestions={suggestions}
+            onClose={() => {
+              setAddingSlot(null);
+              setEditing(null);
+            }}
+            onSaved={async (created) => {
+              onChanged();
+              setAddingSlot(null);
+              setEditing(null);
+              if (created) {
+                showToast({
+                  title: 'Alimento añadido',
+                  tone: 'ok',
+                  actionLabel: 'Deshacer',
+                  onAction: async () => {
+                    await deleteMeal(created.id);
+                    onChanged();
+                  },
+                });
+              } else {
+                showToast({ title: 'Cambios guardados', tone: 'ok' });
+              }
+            }}
+          />
+        )}
       </div>
     </div>
   );
 }
 
-/** Selector segmentado de textura (opcional). */
-function TextureSelect({
-  value,
-  onChange,
-}: {
-  value: Texture | null;
-  onChange: (t: Texture | null) => void;
-}) {
-  return (
-    <div className="texture-select" role="group" aria-label={t.meals.texture}>
-      {TEXTURES.map((tx) => (
-        <button
-          key={tx}
-          type="button"
-          className={value === tx ? 'active' : ''}
-          onClick={() => onChange(value === tx ? null : tx)}
-          title={t.textures[tx].label}
-          aria-pressed={value === tx}
-        >
-          {t.textures[tx].icon}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-/** Iconos de un chip: textura + distintivo de "nuevo". */
-function ItemBadges({ item }: { item: MealItem }) {
-  return (
-    <>
-      {item.texture && (
-        <span className="texture-icon" title={t.textures[item.texture].label}>
-          {t.textures[item.texture].icon}
-        </span>
-      )}
-      {item.is_new && (
-        <span className="new-badge" title={t.meals.isNew}>
-          ✨
-        </span>
-      )}
-    </>
-  );
-}
-
-function SlotEditor({
+function MealSlotSection({
   slot,
-  day,
   items,
-  onChanged,
+  onAdd,
+  onEdit,
+  onDelete,
 }: {
   slot: MealSlot;
-  day: Date;
   items: MealItem[];
-  onChanged: () => void;
+  onAdd: () => void;
+  onEdit: (item: MealItem) => void;
+  onDelete: (item: MealItem) => void;
 }) {
-  const { session } = useAuth();
-  const { categories } = useCategories();
-  const [name, setName] = useState('');
-  const [categoryId, setCategoryId] = useState('');
-  const [texture, setTexture] = useState<Texture | null>(null);
-  const [isNew, setIsNew] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-
-  const defaultCat = useMemo(() => categories[0]?.id ?? '', [categories]);
-
-  useEffect(() => {
-    if (!categoryId && defaultCat) setCategoryId(defaultCat);
-  }, [defaultCat, categoryId]);
-
-  async function handleAdd(e: React.FormEvent) {
-    e.preventDefault();
-    const trimmed = name.trim();
-    if (!trimmed || !session) return;
-    setBusy(true);
-    try {
-      await addMeal({
-        userId: session.user.id,
-        day: dayKey(day),
-        slot,
-        name: trimmed,
-        categoryId: categoryId || defaultCat || null,
-        texture,
-        isNew,
-      });
-      setName('');
-      setTexture(null);
-      setIsNew(false);
-      onChanged();
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function handleDelete(id: string) {
-    if (!window.confirm(t.meals.confirmDelete)) return;
-    await deleteMeal(id);
-    onChanged();
-  }
-
   return (
-    <section className="slot">
-      <h3 className="slot-title">{t.slots[slot]}</h3>
-
-      <ul className="chip-list">
-        {items.length === 0 && <li className="muted small">{t.meals.empty}</li>}
-        {items.map((item) =>
-          editingId === item.id ? (
-            <ChipEditor
-              key={item.id}
-              item={item}
-              onDone={() => {
-                setEditingId(null);
-                onChanged();
-              }}
-              onCancel={() => setEditingId(null)}
-            />
-          ) : (
-            <li key={item.id} className="chip">
-              <CategoryDot categoryId={item.category_id} />
-              <span className="chip-name">{item.name}</span>
-              <ItemBadges item={item} />
-              <button
-                className="chip-btn"
-                onClick={() => setEditingId(item.id)}
-                aria-label={t.meals.edit}
-              >
-                ✎
-              </button>
-              <button
-                className="chip-btn"
-                onClick={() => handleDelete(item.id)}
-                aria-label={t.meals.delete}
-              >
-                🗑
-              </button>
-            </li>
-          ),
-        )}
-      </ul>
-
-      <form className="add-form" onSubmit={handleAdd}>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder={t.meals.foodName}
-          aria-label={`${t.meals.foodName} — ${t.slots[slot]}`}
-          maxLength={120}
-        />
-        <select
-          value={categoryId || defaultCat}
-          onChange={(e) => setCategoryId(e.target.value)}
-          aria-label={t.meals.category}
-        >
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <TextureSelect value={texture} onChange={setTexture} />
-        <label className="new-check" title={t.meals.isNew}>
-          <input
-            type="checkbox"
-            checked={isNew}
-            onChange={(e) => setIsNew(e.target.checked)}
-          />
-          ✨ {t.meals.isNewShort}
-        </label>
-        <button type="submit" disabled={busy || !name.trim() || categories.length === 0}>
-          {t.meals.add}
+    <section className="meal-slot-section">
+      <div className="section-title-row">
+        <h3>{t.slots[slot]}</h3>
+        <button className="ghost small-btn" onClick={onAdd}>
+          {t.meals.addFood}
         </button>
-      </form>
+      </div>
+      {items.length === 0 ? (
+        <p className="muted small">{t.meals.empty}</p>
+      ) : (
+        <div className="meal-row-list">
+          {items.map((item) => (
+            <article className={`meal-row ${item.reaction === 'reaction' ? 'has-reaction' : ''}`} key={item.id}>
+              <div className="meal-row-main">
+                <CategoryDot categoryId={item.category_id} />
+                <div>
+                  <strong>{item.name}</strong>
+                  <div className="meal-meta">
+                    {item.texture && <span>{t.textures[item.texture].label}</span>}
+                    {item.is_new && <span>✨ {t.meals.isNew}</span>}
+                    {item.reaction && <span>{t.reactions[item.reaction].label}</span>}
+                    {item.notes && <span>Nota</span>}
+                  </div>
+                </div>
+              </div>
+              <div className="meal-row-actions">
+                <button className="chip-btn" onClick={() => onEdit(item)} aria-label={t.meals.edit}>
+                  Editar
+                </button>
+                <button className="chip-btn danger-text" onClick={() => void onDelete(item)} aria-label={t.meals.delete}>
+                  Eliminar
+                </button>
+              </div>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
 
-function ChipEditor({
+function AddFoodSheet({
+  day,
+  slot,
   item,
-  onDone,
-  onCancel,
+  suggestions,
+  onClose,
+  onSaved,
 }: {
-  item: MealItem;
-  onDone: () => void;
-  onCancel: () => void;
+  day: Date;
+  slot: MealSlot;
+  item: MealItem | null;
+  suggestions: string[];
+  onClose: () => void;
+  onSaved: (created: MealItem | null) => void;
 }) {
+  const { session } = useAuth();
   const { categories } = useCategories();
-  const [name, setName] = useState(item.name);
-  const [categoryId, setCategoryId] = useState(item.category_id ?? '');
-  const [texture, setTexture] = useState<Texture | null>(item.texture);
-  const [isNew, setIsNew] = useState(item.is_new);
+  const [name, setName] = useState(item?.name ?? '');
+  const [slotValue, setSlotValue] = useState<MealSlot>(item?.slot ?? slot);
+  const [categoryId, setCategoryId] = useState(item?.category_id ?? categories[0]?.id ?? '');
+  const [texture, setTexture] = useState<Texture | null>(item?.texture ?? null);
+  const [isNew, setIsNew] = useState(item?.is_new ?? false);
+  const [reaction, setReaction] = useState<Reaction | null>(item?.reaction ?? null);
+  const [notes, setNotes] = useState(item?.notes ?? '');
   const [busy, setBusy] = useState(false);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!session || !name.trim()) return;
     setBusy(true);
     try {
-      await updateMeal(item.id, {
-        name: name.trim(),
-        category_id: categoryId || null,
-        texture,
-        is_new: isNew,
-      });
-      onDone();
+      if (item) {
+        await updateMeal(item.id, {
+          name: name.trim(),
+          slot: slotValue,
+          category_id: categoryId || null,
+          texture,
+          is_new: isNew,
+          reaction,
+          notes: notes.trim() || null,
+        });
+        await upsertFoodStatus({
+          name: name.trim(),
+          reaction,
+          notes: notes.trim(),
+          userId: session.user.id,
+          categoryId: categoryId || null,
+        });
+        onSaved(null);
+      } else {
+        const created = await addMeal({
+          userId: session.user.id,
+          day: dayKey(day),
+          slot: slotValue,
+          name: name.trim(),
+          categoryId: categoryId || null,
+          texture,
+          isNew,
+          reaction,
+          notes: notes.trim() || null,
+        });
+        await upsertFoodStatus({
+          name: name.trim(),
+          reaction,
+          notes: notes.trim(),
+          userId: session.user.id,
+          categoryId: categoryId || null,
+        });
+        onSaved(created);
+      }
     } finally {
       setBusy(false);
     }
   }
 
   return (
-    <li className="chip editing">
-      <form className="add-form" onSubmit={save}>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          aria-label={t.meals.foodName}
-          autoFocus
-        />
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
+    <div className="sheet-backdrop" onClick={onClose}>
+      <form className="add-food-sheet" onSubmit={save} onClick={(e) => e.stopPropagation()}>
+        <header className="section-title-row">
+          <h3>{item ? t.meals.edit : t.meals.addFood}</h3>
+          <button type="button" className="icon-btn" onClick={onClose}>
+            Cerrar
+          </button>
+        </header>
+
+        <div className="suggestion-row">
+          {suggestions.slice(0, 8).map((suggestion) => (
+            <button key={suggestion} type="button" className="food-suggestion" onClick={() => setName(suggestion)}>
+              {suggestion}
+            </button>
           ))}
-        </select>
-        <TextureSelect value={texture} onChange={setTexture} />
-        <label className="new-check" title={t.meals.isNew}>
-          <input
-            type="checkbox"
-            checked={isNew}
-            onChange={(e) => setIsNew(e.target.checked)}
-          />
-          ✨ {t.meals.isNewShort}
+        </div>
+
+        <label>
+          {t.meals.foodName}
+          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={120} />
         </label>
-        <button type="submit" disabled={busy}>
-          {t.meals.save}
-        </button>
-        <button type="button" className="ghost" onClick={onCancel}>
-          {t.meals.cancel}
+        <label>
+          Franja
+          <select value={slotValue} onChange={(e) => setSlotValue(e.target.value as MealSlot)}>
+            {MEAL_SLOTS.map((mealSlot) => (
+              <option key={mealSlot} value={mealSlot}>
+                {t.slots[mealSlot]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t.meals.category}
+          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="segmented-field">
+          <span>{t.meals.texture}</span>
+          <div className="text-segments">
+            {TEXTURES.map((tx) => (
+              <button
+                key={tx}
+                type="button"
+                className={texture === tx ? 'active' : ''}
+                onClick={() => setTexture(texture === tx ? null : tx)}
+                aria-pressed={texture === tx}
+              >
+                {t.textures[tx].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="segmented-field">
+          <span>{t.foods.howItWent}</span>
+          <div className="text-segments">
+            {REACTIONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={reaction === r ? 'active' : ''}
+                onClick={() => setReaction(reaction === r ? null : r)}
+                aria-pressed={reaction === r}
+              >
+                {t.reactions[r].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <label className="new-check large-check">
+          <input type="checkbox" checked={isNew} onChange={(e) => setIsNew(e.target.checked)} />
+          {t.meals.isNew}
+        </label>
+
+        <label>
+          Nota
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} />
+        </label>
+
+        <button type="submit" className="primary" disabled={busy || !name.trim()}>
+          {item ? t.meals.save : t.meals.add}
         </button>
       </form>
-    </li>
+    </div>
   );
 }

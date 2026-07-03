@@ -7,8 +7,10 @@ export const t = {
 
   // Navegación
   nav: {
+    today: 'Hoy',
     calendar: 'Calendario',
     foods: 'Alimentos',
+    planner: 'Planificar',
     settings: 'Ajustes',
     admin: 'Administración',
     signOut: 'Cerrar sesión',
@@ -83,6 +85,9 @@ export const t = {
     copyWeekTo: 'Copiar esta semana a (lunes destino)…',
     copied: 'Copiado',
     nothingToCopy: 'No hay nada que copiar',
+    append: 'Añadir sin borrar',
+    replace: 'Reemplazar destino',
+    planned: 'Planificado',
   },
 
   // Texturas de los alimentos
@@ -145,6 +150,62 @@ export const t = {
     notesPlaceholder: 'Notas sobre este alimento…',
     saved: 'Guardado',
     newBadge: 'Nuevo',
+    search: 'Buscar alimento',
+    allCategories: 'Todas las categorías',
+    allReactions: 'Todas las reacciones',
+    unrated: 'Sin evaluar',
+    onlyNew: 'Primeras veces',
+    onlyAllergens: 'Alérgenos',
+    sort: 'Ordenar',
+    sortName: 'Nombre',
+    sortFirst: 'Primera vez',
+    sortLast: 'Última vez',
+    sortCount: 'Más ofrecidos',
+    firstTried: 'Primera vez',
+    lastOffered: 'Última vez',
+    timesOffered: 'Veces ofrecido',
+    planAgain: 'Planificar de nuevo',
+  },
+
+  today: {
+    title: 'Hoy',
+    subtitle: 'Qué ha comido, cómo fue y qué conviene tener presente.',
+    empty: 'Aún no hay comidas para hoy.',
+    addFood: 'Añadir alimento',
+    summary: 'Resumen de hoy',
+    recentNew: 'Nuevos alimentos recientes',
+    watch: 'Reacciones a vigilar',
+    suggestions: 'Sugerencias',
+    planned: 'Planificado para hoy',
+    allergens: 'Alérgenos introducidos',
+    foodsToday: 'alimentos hoy',
+    newToday: 'nuevos',
+    reactionsToday: 'reacciones',
+    noteToday: 'nota del día',
+    noSuggestions: 'Cuando haya más historial aparecerán alimentos para reintentar.',
+  },
+
+  planner: {
+    title: 'Planificar',
+    subtitle: 'Organiza la semana y convierte lo planificado en comidas reales.',
+    add: 'Planificar alimento',
+    complete: 'Marcar como comido',
+    shopping: 'Lista de compra',
+    retry: 'Alimentos para reintentar',
+    newThisWeek: 'Ideas para nuevos alimentos',
+    empty: 'No hay alimentos planificados esta semana.',
+  },
+
+  confirm: {
+    deleteFood: '¿Eliminar este alimento?',
+    deleteCategory: '¿Eliminar esta categoría?',
+    deleteUser: '¿Eliminar este usuario?',
+    disableUser: '¿Cambiar el estado de este usuario?',
+    roleUser: '¿Cambiar el rol de este usuario?',
+    copyDay: 'Copiar día',
+    copyWeek: 'Copiar semana',
+    cancel: 'Cancelar',
+    delete: 'Eliminar',
   },
 
   // Administración

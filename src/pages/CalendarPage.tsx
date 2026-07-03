@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Legend } from '../components/Legend';
 import { DayModal } from '../components/DayModal';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
 import {
   DayView,
   MonthView,
   WeekView,
   YearView,
 } from '../components/CalendarViews';
-import { copyWeek, fetchMealsInRange } from '../lib/data';
+import { copyWeek, fetchMealsInRange, previewCopyWeek, type CopyMode } from '../lib/data';
 import {
   addDays,
   addMonths,
@@ -59,6 +61,8 @@ function title(view: View, cursor: Date): string {
 
 export function CalendarPage() {
   const { session } = useAuth();
+  const { choose } = useConfirm();
+  const { showToast } = useToast();
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [meals, setMeals] = useState<MealItem[]>([]);
@@ -116,8 +120,29 @@ export function CalendarPage() {
     if (!session || !copyWeekTo) return;
     const src = dayKey(weekDays(cursor)[0]);
     const dst = dayKey(weekDays(fromKey(copyWeekTo))[0]);
-    const n = await copyWeek(src, dst, session.user.id);
+    const preview = await previewCopyWeek(src, dst);
+    if (preview.sourceCount === 0) {
+      setCopyWeekMsg(t.meals.nothingToCopy);
+      return;
+    }
+    const choice = await choose({
+      title: t.confirm.copyWeek,
+      body:
+        `Se copiarán ${preview.sourceCount} alimentos de ${preview.sourceFrom} a ${preview.sourceTo} ` +
+        `hacia ${preview.destinationFrom} a ${preview.destinationTo}. ` +
+        (preview.hasConflicts
+          ? `El destino ya tiene ${preview.destinationCount} alimentos.`
+          : 'El destino está vacío.'),
+      choices: [
+        { value: 'append', label: t.meals.append, variant: 'primary' },
+        { value: 'replace', label: t.meals.replace, variant: 'danger' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (choice !== 'append' && choice !== 'replace') return;
+    const n = await copyWeek(src, dst, session.user.id, choice as CopyMode);
     setCopyWeekMsg(n > 0 ? `✓ ${t.meals.copied} (${n})` : t.meals.nothingToCopy);
+    showToast({ title: `${t.meals.copied} (${n})`, tone: 'ok' });
     setTimeout(() => setCopyWeekMsg(''), 2500);
     if (n > 0) void load();
   }
