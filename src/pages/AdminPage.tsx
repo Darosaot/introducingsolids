@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useConfirm } from '../context/ConfirmContext';
+import { useToast } from '../context/ToastContext';
 import { createUser, deleteUser, listUsers, updateUser } from '../lib/admin';
 import { t } from '../lib/i18n';
 import type { AdminUser, UserRole } from '../lib/types';
 
 export function AdminPage() {
   const { session } = useAuth();
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,36 +50,64 @@ export function AdminPage() {
       setPassword('');
       setRole('user');
       setCreateMsg(t.admin.createSuccess);
+      showToast({ title: t.admin.createSuccess, tone: 'ok' });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setCreating(false);
     }
   }
 
-  async function mutate(id: string, patch: { role?: UserRole; disabled?: boolean }) {
+  async function mutate(user: AdminUser, patch: { role?: UserRole; disabled?: boolean }) {
+    const action = patch.role
+      ? `${t.confirm.roleUser} ${user.email ?? ''}`
+      : `${t.confirm.disableUser} ${user.email ?? ''}`;
+    const ok = await confirm({
+      title: patch.role ? t.confirm.roleUser : t.confirm.disableUser,
+      body: action,
+      choices: [
+        { value: 'confirm', label: 'Aplicar cambio', variant: 'primary' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (!ok) return;
+    const id = user.id;
     setBusyId(id);
     setError(null);
     try {
       await updateUser(id, patch);
+      showToast({ title: 'Usuario actualizado', tone: 'ok' });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setBusyId(null);
     }
   }
 
   async function remove(id: string) {
-    if (!window.confirm(t.admin.confirmDelete)) return;
+    const user = users.find((u) => u.id === id);
+    const ok = await confirm({
+      title: t.confirm.deleteUser,
+      body: `${user?.email ?? 'Este usuario'} se eliminará de forma permanente.`,
+      choices: [
+        { value: 'confirm', label: t.confirm.delete, variant: 'danger' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (!ok) return;
     setBusyId(id);
     setError(null);
     try {
       await deleteUser(id);
+      showToast({ title: 'Usuario eliminado', tone: 'ok' });
       await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setBusyId(null);
     }
@@ -163,7 +195,7 @@ export function AdminPage() {
                           className="ghost small-btn"
                           disabled={disabled}
                           onClick={() =>
-                            mutate(u.id, { role: u.role === 'admin' ? 'user' : 'admin' })
+                            mutate(u, { role: u.role === 'admin' ? 'user' : 'admin' })
                           }
                         >
                           {u.role === 'admin' ? t.admin.makeUser : t.admin.makeAdmin}
@@ -171,7 +203,7 @@ export function AdminPage() {
                         <button
                           className="ghost small-btn"
                           disabled={disabled || isSelf}
-                          onClick={() => mutate(u.id, { disabled: !u.disabled })}
+                          onClick={() => mutate(u, { disabled: !u.disabled })}
                         >
                           {u.disabled ? t.admin.enable : t.admin.disable}
                         </button>

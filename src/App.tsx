@@ -1,11 +1,16 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { CategoriesProvider } from './context/CategoriesContext';
+import { ConfirmProvider } from './context/ConfirmContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './context/ToastContext';
 import { Layout } from './components/Layout';
 import { CalendarPage } from './pages/CalendarPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { FoodsPage } from './pages/FoodsPage';
+import { FoodDetailPage } from './pages/FoodDetailPage';
+import { PlannerPage } from './pages/PlannerPage';
+import { TodayPage } from './pages/TodayPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { t } from './lib/i18n';
@@ -35,8 +40,11 @@ function AppContent() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<CalendarPage />} />
+            <Route index element={<TodayPage />} />
+            <Route path="calendario" element={<CalendarPage />} />
             <Route path="alimentos" element={<FoodsPage />} />
+            <Route path="alimentos/:nameKey" element={<FoodDetailPage />} />
+            <Route path="planificar" element={<PlannerPage />} />
             <Route path="ajustes" element={<SettingsPage />} />
             <Route
               path="admin"
@@ -57,7 +65,11 @@ function AppContent() {
 export default function App() {
   return (
     <ThemeProvider>
-      <AppContent />
+      <ToastProvider>
+        <ConfirmProvider>
+          <AppContent />
+        </ConfirmProvider>
+      </ToastProvider>
     </ThemeProvider>
   );
 }

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
+import { useConfirm } from '../context/ConfirmContext';
 import { useTheme, THEMES } from '../context/ThemeContext';
+import { useToast } from '../context/ToastContext';
 import { addCategory, deleteCategory, updateCategory } from '../lib/data';
 import { t } from '../lib/i18n';
 import type { Category } from '../lib/types';
@@ -26,6 +28,8 @@ const THEME_SWATCH: Record<string, string> = {
 export function SettingsPage() {
   const { session } = useAuth();
   const { categories, refresh } = useCategories();
+  const { confirm } = useConfirm();
+  const { showToast } = useToast();
   const { theme, setTheme } = useTheme();
 
   const [draft, setDraft] = useState<Category[]>([]);
@@ -58,6 +62,9 @@ export function SettingsPage() {
       );
       await refresh();
       setSaved(true);
+      showToast({ title: t.categories.saved, tone: 'ok' });
+    } catch {
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setBusy(false);
     }
@@ -77,15 +84,28 @@ export function SettingsPage() {
       setNewName('');
       setNewColor('#22C55E');
       await refresh();
+      showToast({ title: t.categories.saved, tone: 'ok' });
+    } catch {
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setAdding(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!window.confirm(t.categories.confirmDelete)) return;
+    const category = categories.find((c) => c.id === id);
+    const ok = await confirm({
+      title: t.confirm.deleteCategory,
+      body: `${category?.name ?? 'Esta categoría'} se eliminará. Los alimentos que la usen quedarán sin categoría.`,
+      choices: [
+        { value: 'confirm', label: t.confirm.delete, variant: 'danger' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (!ok) return;
     await deleteCategory(id);
     await refresh();
+    showToast({ title: 'Categoría eliminada', tone: 'ok' });
   }
 
   return (

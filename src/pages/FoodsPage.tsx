@@ -1,109 +1,129 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { AllergenBadge } from '../components/AllergenBadge';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
-import { fetchFoodsTried, updateFoodCategory, upsertFoodStatus } from '../lib/data';
+import { useToast } from '../context/ToastContext';
+import {
+  DEFAULT_FOOD_FILTERS,
+  fetchFoodsTried,
+  filterFoods,
+  updateFoodCategory,
+  upsertFoodStatus,
+} from '../lib/data';
 import { fmt, fromKey } from '../lib/date';
 import { REACTIONS, t } from '../lib/i18n';
-import type { Category, FoodTried, Reaction } from '../lib/types';
+import type { Category, FoodFilters, FoodTried, Reaction } from '../lib/types';
 
 export function FoodsPage() {
   const { session } = useAuth();
   const { categories, byId } = useCategories();
+  const { showToast } = useToast();
   const [foods, setFoods] = useState<FoodTried[]>([]);
+  const [filters, setFilters] = useState<FoodFilters>(DEFAULT_FOOD_FILTERS);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       setFoods(await fetchFoodsTried());
     } catch (e) {
       console.error('Error cargando alimentos:', e);
+      showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
-  // Agrupa por categoría, respetando el orden de las categorías.
-  const groups = useMemo(() => {
-    const byCat = new Map<string, FoodTried[]>();
-    for (const f of foods) {
-      const key = f.categoryId ?? '__none__';
-      const arr = byCat.get(key);
-      if (arr) arr.push(f);
-      else byCat.set(key, [f]);
-    }
-    const ordered: Array<{ id: string; name: string; color: string; items: FoodTried[] }> = [];
-    for (const c of categories) {
-      const items = byCat.get(c.id);
-      if (items) ordered.push({ id: c.id, name: c.name, color: c.color, items });
-    }
-    const none = byCat.get('__none__');
-    if (none) ordered.push({ id: '__none__', name: t.foods.noCategory, color: '#CBD5E1', items: none });
-    return ordered;
-  }, [foods, categories]);
-
-  function updateLocalStatus(nameKey: string, reaction: Reaction | null, notes: string) {
-    setFoods((prev) =>
-      prev.map((f) =>
-        f.nameKey === nameKey
-          ? { ...f, status: { name_key: nameKey, display_name: f.name, reaction, notes } }
-          : f,
-      ),
-    );
-  }
+  const visibleFoods = useMemo(() => filterFoods(foods, filters), [foods, filters]);
 
   async function saveStatus(food: FoodTried, reaction: Reaction | null, notes: string) {
     if (!session) return;
-    updateLocalStatus(food.nameKey, reaction, notes);
-    await upsertFoodStatus({ name: food.name, reaction, notes, userId: session.user.id });
+    const previous = foods;
+    setFoods((prev) =>
+      prev.map((f) =>
+        f.nameKey === food.nameKey
+          ? {
+              ...f,
+              reaction,
+              notes,
+              status: {
+                name_key: food.nameKey,
+                display_name: f.name,
+                reaction,
+                notes,
+                category_id: f.categoryId,
+                is_allergen: f.isAllergen,
+                allergen_keys: f.allergenKeys,
+                favorite: f.favorite,
+                first_tried_day: f.firstDay,
+                last_offered_day: f.lastDay,
+                offer_count: f.count,
+              },
+            }
+          : f,
+      ),
+    );
+    try {
+      await upsertFoodStatus({
+        name: food.name,
+        reaction,
+        notes,
+        userId: session.user.id,
+        categoryId: food.categoryId,
+        isAllergen: food.isAllergen,
+        allergenKeys: food.allergenKeys,
+        favorite: food.favorite,
+      });
+      showToast({ title: t.foods.saved, tone: 'ok' });
+    } catch {
+      setFoods(previous);
+      showToast({ title: t.common.error, tone: 'error' });
+    }
   }
 
   async function changeCategory(food: FoodTried, categoryId: string | null) {
-    // Actualiza en memoria de inmediato y en toda la app en segundo plano.
-    setFoods((prev) =>
-      prev.map((f) => (f.nameKey === food.nameKey ? { ...f, categoryId } : f)),
-    );
-    await updateFoodCategory(food.nameKey, categoryId);
-    // Recarga para reflejar el reagrupado con datos frescos.
-    await load();
+    const previous = foods;
+    setFoods((prev) => prev.map((f) => (f.nameKey === food.nameKey ? { ...f, categoryId } : f)));
+    try {
+      await updateFoodCategory(food.nameKey, categoryId);
+      await load();
+      showToast({ title: t.categories.saved, tone: 'ok' });
+    } catch {
+      setFoods(previous);
+      showToast({ title: t.common.error, tone: 'error' });
+    }
   }
 
   return (
-    <div className="page">
+    <div className="page foods-page">
       <header className="page-head">
         <h1>{t.foods.title}</h1>
         <p className="muted">{t.foods.subtitle}</p>
       </header>
+
+      <FoodSearchFilters filters={filters} categories={categories} onChange={setFilters} />
 
       {loading ? (
         <p className="muted">{t.common.loading}</p>
       ) : foods.length === 0 ? (
         <p className="muted">{t.foods.empty}</p>
       ) : (
-        <div className="foods">
-          {groups.map((g) => (
-            <section className="foods-group" key={g.id}>
-              <h2 className="foods-cat">
-                <span className="cat-dot" style={{ backgroundColor: g.color }} />
-                {g.name}
-                <span className="muted small"> · {g.items.length}</span>
-              </h2>
-              <div className="foods-list">
-                {g.items.map((food) => (
-                  <FoodCard
-                    key={food.nameKey}
-                    food={food}
-                    color={(food.categoryId && byId[food.categoryId]?.color) || '#CBD5E1'}
-                    categories={categories}
-                    onSave={saveStatus}
-                    onCategory={changeCategory}
-                  />
-                ))}
-              </div>
-            </section>
+        <div className="food-library-grid">
+          {visibleFoods.map((food) => (
+            <FoodCard
+              key={food.nameKey}
+              food={food}
+              color={(food.categoryId && byId[food.categoryId]?.color) || '#CBD5E1'}
+              categoryName={(food.categoryId && byId[food.categoryId]?.name) || t.foods.noCategory}
+              categories={categories}
+              onSave={saveStatus}
+              onCategory={changeCategory}
+            />
           ))}
         </div>
       )}
@@ -111,32 +131,115 @@ export function FoodsPage() {
   );
 }
 
+function FoodSearchFilters({
+  filters,
+  categories,
+  onChange,
+}: {
+  filters: FoodFilters;
+  categories: Category[];
+  onChange: (filters: FoodFilters) => void;
+}) {
+  return (
+    <section className="filter-bar">
+      <input
+        value={filters.query}
+        onChange={(e) => onChange({ ...filters, query: e.target.value })}
+        placeholder={t.foods.search}
+        aria-label={t.foods.search}
+      />
+      <select
+        value={filters.categoryId}
+        onChange={(e) => onChange({ ...filters, categoryId: e.target.value })}
+        aria-label={t.meals.category}
+      >
+        <option value="">{t.foods.allCategories}</option>
+        {categories.map((category) => (
+          <option value={category.id} key={category.id}>
+            {category.name}
+          </option>
+        ))}
+      </select>
+      <select
+        value={filters.reaction}
+        onChange={(e) => onChange({ ...filters, reaction: e.target.value as FoodFilters['reaction'] })}
+        aria-label={t.foods.allReactions}
+      >
+        <option value="">{t.foods.allReactions}</option>
+        {REACTIONS.map((reaction) => (
+          <option value={reaction} key={reaction}>
+            {t.reactions[reaction].label}
+          </option>
+        ))}
+        <option value="unrated">{t.foods.unrated}</option>
+      </select>
+      <select
+        value={filters.sort}
+        onChange={(e) => onChange({ ...filters, sort: e.target.value as FoodFilters['sort'] })}
+        aria-label={t.foods.sort}
+      >
+        <option value="name">{t.foods.sortName}</option>
+        <option value="first">{t.foods.sortFirst}</option>
+        <option value="last">{t.foods.sortLast}</option>
+        <option value="count">{t.foods.sortCount}</option>
+      </select>
+      <label className="toggle-pill">
+        <input
+          type="checkbox"
+          checked={filters.onlyNew}
+          onChange={(e) => onChange({ ...filters, onlyNew: e.target.checked })}
+        />
+        {t.foods.onlyNew}
+      </label>
+      <label className="toggle-pill">
+        <input
+          type="checkbox"
+          checked={filters.onlyAllergens}
+          onChange={(e) => onChange({ ...filters, onlyAllergens: e.target.checked })}
+        />
+        {t.foods.onlyAllergens}
+      </label>
+    </section>
+  );
+}
+
 function FoodCard({
   food,
   color,
+  categoryName,
   categories,
   onSave,
   onCategory,
 }: {
   food: FoodTried;
   color: string;
+  categoryName: string;
   categories: Category[];
   onSave: (food: FoodTried, reaction: Reaction | null, notes: string) => void;
   onCategory: (food: FoodTried, categoryId: string | null) => void;
 }) {
-  const [notes, setNotes] = useState(food.status?.notes ?? '');
-  const reaction = food.status?.reaction ?? null;
+  const [notes, setNotes] = useState(food.notes ?? '');
+  const reaction = food.reaction ?? null;
 
   return (
-    <div className="food-card" style={{ borderLeftColor: color }}>
+    <article className={`food-card library-card ${reaction === 'reaction' ? 'has-reaction' : ''}`} style={{ borderLeftColor: color }}>
       <div className="food-head">
-        <span className="food-name">{food.name}</span>
+        <div>
+          <Link className="food-name-link" to={`/alimentos/${encodeURIComponent(food.nameKey)}`}>
+            {food.name}
+          </Link>
+          <div className="muted small">{categoryName}</div>
+        </div>
         {food.isNew && <span className="new-badge" title={t.foods.newBadge}>✨</span>}
-        <span className="muted small">
-          {food.count} {food.count === 1 ? t.foods.once : t.foods.times} ·{' '}
-          {t.foods.firstTime}: {fmt.weekdayDay(fromKey(food.firstDay))}
-        </span>
       </div>
+
+      <div className="food-stats">
+        <span>{t.foods.firstTried}: {fmt.weekdayDay(fromKey(food.firstDay))}</span>
+        <span>{t.foods.lastOffered}: {fmt.weekdayDay(fromKey(food.lastDay))}</span>
+        <span>{food.count} {food.count === 1 ? t.foods.once : t.foods.times}</span>
+      </div>
+
+      <AllergenBadge keys={food.allergenKeys} />
 
       <label className="food-cat-row">
         <span className="muted small">{t.meals.category}</span>
@@ -174,11 +277,11 @@ function FoodCard({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={() => {
-          if ((food.status?.notes ?? '') !== notes) onSave(food, reaction, notes);
+          if ((food.notes ?? '') !== notes) onSave(food, reaction, notes);
         }}
         placeholder={t.foods.notesPlaceholder}
         aria-label={t.foods.notesPlaceholder}
       />
-    </div>
+    </article>
   );
 }

@@ -40,6 +40,19 @@ function DayDots({ items }: { items: MealItem[] }) {
   );
 }
 
+function DaySummary({ items }: { items: MealItem[] }) {
+  if (items.length === 0) return null;
+  const newCount = items.filter((it) => it.is_new).length;
+  const reactionCount = items.filter((it) => it.reaction === 'reaction').length;
+  return (
+    <div className="day-summary">
+      <span>{items.length} alimentos</span>
+      {newCount > 0 && <span>{newCount} nuevo</span>}
+      {reactionCount > 0 && <span className="reaction-warn">{reactionCount} reacción</span>}
+    </div>
+  );
+}
+
 // --- Mes --------------------------------------------------------------------
 
 export function MonthView({ cursor, getDay, onSelectDay }: ViewProps) {
@@ -71,6 +84,7 @@ export function MonthView({ cursor, getDay, onSelectDay }: ViewProps) {
                 {fmt.dayNum(d)}
                 {items.some((it) => it.is_new) && <span className="new-badge">✨</span>}
               </span>
+              <DaySummary items={items} />
               <DayDots items={items} />
             </button>
           );
@@ -106,7 +120,7 @@ export function WeekView({ cursor, getDay, onSelectDay }: ViewProps) {
                       <div className="muted small">·</div>
                     ) : (
                       slotItems.map((it) => (
-                        <div className="week-item" key={it.id}>
+                        <div className={`week-item ${it.reaction === 'reaction' ? 'has-reaction' : ''}`} key={it.id}>
                           <span
                             className="cat-dot"
                             style={{
@@ -117,6 +131,7 @@ export function WeekView({ cursor, getDay, onSelectDay }: ViewProps) {
                           <span className="week-item-name">{it.name}</span>
                           {it.texture && <span className="texture-icon">{t.textures[it.texture].icon}</span>}
                           {it.is_new && <span className="new-badge">✨</span>}
+                          {it.reaction === 'reaction' && <span className="reaction-warn">!</span>}
                         </div>
                       ))
                     )}
