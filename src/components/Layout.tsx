@@ -2,6 +2,14 @@ import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { t } from '../lib/i18n';
 
+const NAV_ITEMS = [
+  { to: '/', label: t.nav.today, icon: '🏠', end: true },
+  { to: '/calendario', label: t.nav.calendar, icon: '📅' },
+  { to: '/alimentos', label: t.nav.foods, icon: '🥣' },
+  { to: '/planificar', label: t.nav.planner, icon: '🗓' },
+  { to: '/ajustes', label: t.nav.settings, icon: '⚙' },
+];
+
 export function Layout() {
   const { profile, isAdmin, signOut } = useAuth();
 
@@ -14,24 +22,22 @@ export function Layout() {
         </div>
 
         <nav className="topnav">
-          <NavLink to="/" end className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.today}
-          </NavLink>
-          <NavLink to="/calendario" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.calendar}
-          </NavLink>
-          <NavLink to="/alimentos" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.foods}
-          </NavLink>
-          <NavLink to="/planificar" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.planner}
-          </NavLink>
-          <NavLink to="/ajustes" className={({ isActive }) => (isActive ? 'active' : '')}>
-            {t.nav.settings}
-          </NavLink>
+          {NAV_ITEMS.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.end}
+              className={({ isActive }) => (isActive ? 'active' : '')}
+              aria-label={item.label}
+            >
+              <span className="nav-icon" aria-hidden>{item.icon}</span>
+              <span className="nav-label">{item.label}</span>
+            </NavLink>
+          ))}
           {isAdmin && (
             <NavLink to="/admin" className={({ isActive }) => (isActive ? 'active' : '')}>
-              {t.nav.admin}
+              <span className="nav-icon" aria-hidden>🔒</span>
+              <span className="nav-label">{t.nav.admin}</span>
             </NavLink>
           )}
         </nav>

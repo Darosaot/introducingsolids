@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   aggregateFoods,
+  allergenIntroductionStatuses,
   allergenProgress,
   buildDashboardSummary,
   DEFAULT_FOOD_FILTERS,
   filterFoods,
   foodNameKey,
+  inferAllergenKeys,
   slugKey,
   weekTargetKeys,
 } from './data';
@@ -159,6 +161,15 @@ describe('allergenProgress / buildDashboardSummary', () => {
       [],
     );
     expect(allergenProgress(foods)).toEqual({ introduced: 2, total: 9 });
+  });
+
+  it('infiere legumbres y devuelve estado por alérgeno', () => {
+    expect(inferAllergenKeys('Hummus de garbanzo')).toContain('soy');
+    const foods = aggregateFoods([meal({ name: 'Hummus de garbanzo', name_key: 'hummus de garbanzo' })], []);
+    const statuses = allergenIntroductionStatuses(foods);
+    const legumes = statuses.find((row) => row.key === 'soy')!;
+    expect(legumes.introduced).toBe(true);
+    expect(legumes.foods).toEqual(['Hummus de garbanzo']);
   });
 
   it('resume el día y destaca reacciones, nuevos y planes pendientes', () => {

@@ -137,6 +137,22 @@ export const t = {
     title: 'Ajustes',
   },
 
+  baby: {
+    title: 'Perfil del bebé',
+    subtitle: 'Usa la edad y el inicio de sólidos como referencia para el seguimiento diario.',
+    name: 'Nombre',
+    birthDate: 'Fecha de nacimiento',
+    solidsStartDate: 'Inicio de alimentación complementaria',
+    save: 'Guardar perfil',
+    saved: 'Perfil guardado',
+    age: 'Edad',
+    solidsAge: 'Tiempo con sólidos',
+    ageUnavailable: 'Edad no disponible',
+    setupTitle: 'Completa el perfil del bebé',
+    setupBody: 'Añade fecha de nacimiento e inicio de sólidos para ver edad, semanas con AC y mejores recordatorios.',
+    setupAction: 'Completar en ajustes',
+  },
+
   // Página "Alimentos probados"
   foods: {
     title: 'Alimentos probados',
@@ -174,6 +190,15 @@ export const t = {
     subtitle: 'Qué ha comido, cómo fue y qué conviene tener presente.',
     empty: 'Aún no hay comidas para hoy.',
     addFood: 'Añadir alimento',
+    quickAdd: 'Registro rápido',
+    quickAddHint: 'Añade un alimento sin abrir el editor completo del día.',
+    quickAddPlaceholder: 'Ej. lentejas, huevo, aguacate…',
+    quickAdded: 'Alimento añadido',
+    guideHint: 'Guía AC/BLW',
+    guideRule: 'Un alimento nuevo cada 2-4 días. Si es alérgeno, repetir 3 días seguidos y no introducir otros nuevos.',
+    allergenDetected: 'Posible alérgeno',
+    pendingAllergens: 'Pendientes',
+    introducedAllergens: 'Introducidos',
     summary: 'Resumen de hoy',
     recentNew: 'Nuevos alimentos recientes',
     watch: 'Reacciones a vigilar',
