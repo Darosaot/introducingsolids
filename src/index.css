@@ -1086,3 +1086,15 @@ select:focus {
     padding: 0.3rem 0.5rem;
   }
 }
+
+/* --- Selector de categoría en la ficha de alimento --- */
+.food-cat-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+.food-cat-row select {
+  flex: 1 1 auto;
+  font-size: 0.85rem;
+}

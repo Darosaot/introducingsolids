@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
-import { fetchFoodsTried, upsertFoodStatus } from '../lib/data';
+import { fetchFoodsTried, updateFoodCategory, upsertFoodStatus } from '../lib/data';
 import { fmt, fromKey } from '../lib/date';
 import { REACTIONS, t } from '../lib/i18n';
-import type { FoodTried, Reaction } from '../lib/types';
+import type { Category, FoodTried, Reaction } from '../lib/types';
 
 export function FoodsPage() {
   const { session } = useAuth();
@@ -12,16 +12,19 @@ export function FoodsPage() {
   const [foods, setFoods] = useState<FoodTried[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    let active = true;
-    fetchFoodsTried()
-      .then((f) => active && setFoods(f))
-      .catch((e) => console.error('Error cargando alimentos:', e))
-      .finally(() => active && setLoading(false));
-    return () => {
-      active = false;
-    };
+  const load = useCallback(async () => {
+    try {
+      setFoods(await fetchFoodsTried());
+    } catch (e) {
+      console.error('Error cargando alimentos:', e);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   // Agrupa por categoría, respetando el orden de las categorías.
   const groups = useMemo(() => {
@@ -42,7 +45,7 @@ export function FoodsPage() {
     return ordered;
   }, [foods, categories]);
 
-  function updateLocal(nameKey: string, reaction: Reaction | null, notes: string) {
+  function updateLocalStatus(nameKey: string, reaction: Reaction | null, notes: string) {
     setFoods((prev) =>
       prev.map((f) =>
         f.nameKey === nameKey
@@ -54,8 +57,18 @@ export function FoodsPage() {
 
   async function saveStatus(food: FoodTried, reaction: Reaction | null, notes: string) {
     if (!session) return;
-    updateLocal(food.nameKey, reaction, notes);
+    updateLocalStatus(food.nameKey, reaction, notes);
     await upsertFoodStatus({ name: food.name, reaction, notes, userId: session.user.id });
+  }
+
+  async function changeCategory(food: FoodTried, categoryId: string | null) {
+    // Actualiza en memoria de inmediato y en toda la app en segundo plano.
+    setFoods((prev) =>
+      prev.map((f) => (f.nameKey === food.nameKey ? { ...f, categoryId } : f)),
+    );
+    await updateFoodCategory(food.nameKey, categoryId);
+    // Recarga para reflejar el reagrupado con datos frescos.
+    await load();
   }
 
   return (
@@ -84,7 +97,9 @@ export function FoodsPage() {
                     key={food.nameKey}
                     food={food}
                     color={(food.categoryId && byId[food.categoryId]?.color) || '#CBD5E1'}
+                    categories={categories}
                     onSave={saveStatus}
+                    onCategory={changeCategory}
                   />
                 ))}
               </div>
@@ -99,11 +114,15 @@ export function FoodsPage() {
 function FoodCard({
   food,
   color,
+  categories,
   onSave,
+  onCategory,
 }: {
   food: FoodTried;
   color: string;
+  categories: Category[];
   onSave: (food: FoodTried, reaction: Reaction | null, notes: string) => void;
+  onCategory: (food: FoodTried, categoryId: string | null) => void;
 }) {
   const [notes, setNotes] = useState(food.status?.notes ?? '');
   const reaction = food.status?.reaction ?? null;
@@ -118,6 +137,21 @@ function FoodCard({
           {t.foods.firstTime}: {fmt.weekdayDay(fromKey(food.firstDay))}
         </span>
       </div>
+
+      <label className="food-cat-row">
+        <span className="muted small">{t.meals.category}</span>
+        <select
+          value={food.categoryId ?? ''}
+          onChange={(e) => onCategory(food, e.target.value || null)}
+          aria-label={`${t.meals.category} — ${food.name}`}
+        >
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <div className="food-reactions" role="group" aria-label={t.foods.howItWent}>
         {REACTIONS.map((r) => (
