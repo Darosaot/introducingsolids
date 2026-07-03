@@ -6,6 +6,7 @@ import {
   buildDashboardSummary,
   DEFAULT_FOOD_FILTERS,
   filterFoods,
+  foodsIntroducedBy,
   foodNameKey,
   inferAllergenKeys,
   slugKey,
@@ -172,6 +173,19 @@ describe('allergenProgress / buildDashboardSummary', () => {
     expect(legumes.foods).toEqual(['Hummus de garbanzo']);
   });
 
+  it('no cuenta alérgenos planificados en fechas futuras como introducidos', () => {
+    const foods = aggregateFoods(
+      [
+        meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-04', is_new: true }),
+        meal({ name: 'Pera', name_key: 'pera', day: '2026-07-03' }),
+      ],
+      [],
+    );
+
+    expect(allergenProgress(foodsIntroducedBy(foods, '2026-07-03'))).toEqual({ introduced: 0, total: 9 });
+    expect(allergenProgress(foodsIntroducedBy(foods, '2026-07-04'))).toEqual({ introduced: 1, total: 9 });
+  });
+
   it('resume el día y destaca reacciones, nuevos y planes pendientes', () => {
     const todayMeals = [
       meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-08', is_new: true, reaction: 'reaction' }),
@@ -207,5 +221,25 @@ describe('allergenProgress / buildDashboardSummary', () => {
     expect(summary.reactionCountToday).toBe(1);
     expect(summary.hasDayNote).toBe(true);
     expect(summary.plannedToday).toHaveLength(1);
+  });
+
+  it('el resumen de hoy ignora alimentos futuros al contar alérgenos', () => {
+    const foods = aggregateFoods(
+      [
+        meal({ name: 'Pera', name_key: 'pera', day: '2026-07-03' }),
+        meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-04', is_new: true }),
+      ],
+      [],
+    );
+    const summary = buildDashboardSummary({
+      todayMeals: [meal({ name: 'Pera', name_key: 'pera', day: '2026-07-03' })],
+      dayNote: null,
+      foods,
+      plannedToday: [],
+      todayKey: '2026-07-03',
+    });
+
+    expect(summary.allergensIntroduced).toBe(0);
+    expect(summary.recentNewFoods.map((food) => food.name)).not.toContain('Huevo');
   });
 });
