@@ -1,4 +1,4 @@
-import type { MealSlot, Reaction, Texture } from './types';
+import type { Liking, MealSlot, ReactionStatus, Texture } from './types';
 
 /** Todos los textos visibles de la aplicación (español). */
 export const t = {
@@ -146,13 +146,15 @@ export const t = {
     once: 'vez',
     firstTime: 'Primera vez',
     noCategory: 'Sin categoría',
-    howItWent: '¿Cómo le sentó?',
+    howLiked: '¿Le gustó?',
+    howReacted: '¿Hubo reacción?',
     notesPlaceholder: 'Notas sobre este alimento…',
     saved: 'Guardado',
     newBadge: 'Nuevo',
     search: 'Buscar alimento',
     allCategories: 'Todas las categorías',
-    allReactions: 'Todas las reacciones',
+    allLiking: 'Todos (le gustó)',
+    allReactions: 'Todas (reacciones)',
     unrated: 'Sin evaluar',
     onlyNew: 'Primeras veces',
     onlyAllergens: 'Alérgenos',
@@ -255,4 +257,8 @@ export const MEAL_SLOTS: MealSlot[] = [
 
 export const TEXTURES: Texture[] = ['puree', 'mashed', 'chunks'];
 
-export const REACTIONS: Reaction[] = ['liked', 'disliked', 'reaction', 'ok'];
+/** Columna 1: si le gustó o no. Independiente de si hubo reacción. */
+export const LIKING_OPTIONS: Liking[] = ['liked', 'disliked'];
+
+/** Columna 2: reacciones/alergias. Independiente de si le gustó. */
+export const REACTION_OPTIONS: ReactionStatus[] = ['reaction', 'ok'];

@@ -15,8 +15,8 @@ import {
   type CopyMode,
 } from '../lib/data';
 import { dayKey, fmt } from '../lib/date';
-import { MEAL_SLOTS, REACTIONS, TEXTURES, t } from '../lib/i18n';
-import type { MealItem, MealSlot, Reaction, Texture } from '../lib/types';
+import { LIKING_OPTIONS, MEAL_SLOTS, REACTION_OPTIONS, TEXTURES, t } from '../lib/i18n';
+import type { Liking, MealItem, MealSlot, ReactionStatus, Texture } from '../lib/types';
 import { CategoryDot } from './CategoryDot';
 
 interface Props {
@@ -286,6 +286,7 @@ function MealSlotSection({
                   <div className="meal-meta">
                     {item.texture && <span>{t.textures[item.texture].label}</span>}
                     {item.is_new && <span>✨ {t.meals.isNew}</span>}
+                    {item.liking && <span>{t.reactions[item.liking].label}</span>}
                     {item.reaction && <span>{t.reactions[item.reaction].label}</span>}
                     {item.notes && <span>Nota</span>}
                   </div>
@@ -329,7 +330,8 @@ function AddFoodSheet({
   const [categoryId, setCategoryId] = useState(item?.category_id ?? categories[0]?.id ?? '');
   const [texture, setTexture] = useState<Texture | null>(item?.texture ?? null);
   const [isNew, setIsNew] = useState(item?.is_new ?? false);
-  const [reaction, setReaction] = useState<Reaction | null>(item?.reaction ?? null);
+  const [liking, setLiking] = useState<Liking | null>(item?.liking ?? null);
+  const [reaction, setReaction] = useState<ReactionStatus | null>(item?.reaction ?? null);
   const [notes, setNotes] = useState(item?.notes ?? '');
   const [busy, setBusy] = useState(false);
 
@@ -345,11 +347,13 @@ function AddFoodSheet({
           category_id: categoryId || null,
           texture,
           is_new: isNew,
+          liking,
           reaction,
           notes: notes.trim() || null,
         });
         await upsertFoodStatus({
           name: name.trim(),
+          liking,
           reaction,
           notes: notes.trim(),
           userId: session.user.id,
@@ -365,11 +369,13 @@ function AddFoodSheet({
           categoryId: categoryId || null,
           texture,
           isNew,
+          liking,
           reaction,
           notes: notes.trim() || null,
         });
         await upsertFoodStatus({
           name: name.trim(),
+          liking,
           reaction,
           notes: notes.trim(),
           userId: session.user.id,
@@ -443,17 +449,34 @@ function AddFoodSheet({
         </div>
 
         <div className="segmented-field">
-          <span>{t.foods.howItWent}</span>
+          <span>{t.foods.howLiked}</span>
           <div className="text-segments">
-            {REACTIONS.map((r) => (
+            {LIKING_OPTIONS.map((option) => (
               <button
-                key={r}
+                key={option}
                 type="button"
-                className={reaction === r ? 'active' : ''}
-                onClick={() => setReaction(reaction === r ? null : r)}
-                aria-pressed={reaction === r}
+                className={liking === option ? 'active' : ''}
+                onClick={() => setLiking(liking === option ? null : option)}
+                aria-pressed={liking === option}
               >
-                {t.reactions[r].label}
+                {t.reactions[option].label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="segmented-field">
+          <span>{t.foods.howReacted}</span>
+          <div className="text-segments">
+            {REACTION_OPTIONS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                className={reaction === option ? 'active' : ''}
+                onClick={() => setReaction(reaction === option ? null : option)}
+                aria-pressed={reaction === option}
+              >
+                {t.reactions[option].label}
               </button>
             ))}
           </div>

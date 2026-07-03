@@ -23,6 +23,7 @@ function meal(partial: Partial<MealItem>): MealItem {
     category_id: 'cat-fruit',
     texture: null,
     is_new: false,
+    liking: null,
     reaction: null,
     notes: null,
     planned_item_id: null,
@@ -37,6 +38,7 @@ function status(partial: Partial<FoodStatus>): FoodStatus {
   return {
     name_key: 'aguacate',
     display_name: 'Aguacate',
+    liking: null,
     reaction: null,
     notes: '',
     category_id: null,
@@ -79,7 +81,7 @@ describe('aggregateFoods', () => {
       meal({ name: 'Aguacate', day: '2026-07-02', category_id: 'cat-fruit' }),
     ];
     const statuses: FoodStatus[] = [
-      status({ name_key: 'aguacate', display_name: 'Aguacate', reaction: 'liked', notes: 'rico' }),
+      status({ name_key: 'aguacate', display_name: 'Aguacate', liking: 'liked', notes: 'rico' }),
     ];
     const out = aggregateFoods(meals, statuses);
     // Ordenado alfabéticamente: Aguacate, Plátano
@@ -92,11 +94,21 @@ describe('aggregateFoods', () => {
     expect(platano.isNew).toBe(true); // alguna aparición marcada como nueva
 
     const aguacate = out.find((f) => f.nameKey === 'aguacate')!;
-    expect(aguacate.status?.reaction).toBe('liked');
+    expect(aguacate.status?.liking).toBe('liked');
   });
 
   it('ignora nombres vacíos', () => {
     expect(aggregateFoods([meal({ name: '   ' })], [])).toHaveLength(0);
+  });
+
+  it('gusto y reacción son independientes: se pueden marcar ambos a la vez', () => {
+    const statuses: FoodStatus[] = [
+      status({ name_key: 'huevo', display_name: 'Huevo', liking: 'liked', reaction: 'reaction' }),
+    ];
+    const out = aggregateFoods([meal({ name: 'Huevo', name_key: 'huevo' })], statuses);
+    const huevo = out.find((f) => f.nameKey === 'huevo')!;
+    expect(huevo.liking).toBe('liked');
+    expect(huevo.reaction).toBe('reaction');
   });
 });
 

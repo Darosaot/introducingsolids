@@ -10,10 +10,11 @@ import type {
   FoodFilters,
   FoodStatus,
   FoodTried,
+  Liking,
   MealItem,
   MealSlot,
   PlannedMeal,
-  Reaction,
+  ReactionStatus,
   Texture,
   Theme,
 } from './types';
@@ -37,6 +38,7 @@ export const ALLERGENS: Array<{ key: AllergenKey; label: string; keywords: strin
 export const DEFAULT_FOOD_FILTERS: FoodFilters = {
   query: '',
   categoryId: '',
+  liking: '',
   reaction: '',
   onlyNew: false,
   onlyAllergens: false,
@@ -64,6 +66,7 @@ interface FoodSummaryRow {
   last_offered_day: string;
   is_new: boolean;
   textures: unknown;
+  liking: unknown;
   reaction: unknown;
   notes: string | null;
   is_allergen: boolean;
@@ -189,7 +192,8 @@ export async function addMeal(input: {
   categoryId: string | null;
   texture?: Texture | null;
   isNew?: boolean;
-  reaction?: Reaction | null;
+  liking?: Liking | null;
+  reaction?: ReactionStatus | null;
   notes?: string | null;
   plannedItemId?: string | null;
 }): Promise<MealItem> {
@@ -204,6 +208,7 @@ export async function addMeal(input: {
       category_id: input.categoryId,
       texture: input.texture ?? null,
       is_new: input.isNew ?? false,
+      liking: input.liking ?? null,
       reaction: input.reaction ?? null,
       notes: input.notes ?? null,
       planned_item_id: input.plannedItemId ?? null,
@@ -216,7 +221,7 @@ export async function addMeal(input: {
 
 export async function updateMeal(
   id: string,
-  patch: Partial<Pick<MealItem, 'name' | 'slot' | 'category_id' | 'texture' | 'is_new' | 'reaction' | 'notes'>>,
+  patch: Partial<Pick<MealItem, 'name' | 'slot' | 'category_id' | 'texture' | 'is_new' | 'liking' | 'reaction' | 'notes'>>,
 ): Promise<void> {
   const dbPatch = {
     ...patch,
@@ -273,6 +278,7 @@ export async function copyDay(
     category_id: m.category_id,
     texture: m.texture,
     is_new: false,
+    liking: m.liking,
     reaction: m.reaction,
     notes: m.notes,
     sort_order: m.sort_order,
@@ -369,7 +375,8 @@ export async function fetchFoodStatuses(): Promise<FoodStatus[]> {
 
 export async function upsertFoodStatus(input: {
   name: string;
-  reaction: Reaction | null;
+  liking: Liking | null;
+  reaction: ReactionStatus | null;
   notes: string;
   userId: string;
   categoryId?: string | null;
@@ -381,6 +388,7 @@ export async function upsertFoodStatus(input: {
     {
       name_key: foodNameKey(input.name),
       display_name: input.name,
+      liking: input.liking,
       reaction: input.reaction,
       notes: input.notes,
       ...(input.categoryId !== undefined ? { category_id: input.categoryId } : {}),
@@ -441,6 +449,7 @@ export function aggregateFoods(meals: MealItem[], statuses: FoodStatus[]): FoodT
         lastDay: m.day,
         isNew: m.is_new,
         textures: m.texture ? [m.texture] : [],
+        liking: status?.liking ?? m.liking ?? null,
         reaction: status?.reaction ?? m.reaction ?? null,
         notes: status?.notes ?? '',
         isAllergen: status?.is_allergen ?? allergenKeys.length > 0,
@@ -455,6 +464,7 @@ export function aggregateFoods(meals: MealItem[], statuses: FoodStatus[]): FoodT
       if (!existing.categoryId && m.category_id) existing.categoryId = m.category_id;
       existing.isNew = existing.isNew || m.is_new;
       if (m.texture && !existing.textures.includes(m.texture)) existing.textures.push(m.texture);
+      if (!existing.liking && m.liking) existing.liking = m.liking;
       if (!existing.reaction && m.reaction) existing.reaction = m.reaction;
       existing.allergenKeys = mergeAllergenKeys(existing.allergenKeys, allergenKeys);
       existing.isAllergen = existing.isAllergen || allergenKeys.length > 0;
@@ -481,12 +491,14 @@ async function fetchFoodSummaries(): Promise<FoodTried[] | null> {
 
 function foodFromSummaryRow(row: FoodSummaryRow): FoodTried {
   const name = row.display_name?.trim() || row.name_key;
-  const reaction = normalizeReaction(row.reaction);
+  const liking = normalizeLiking(row.liking);
+  const reaction = normalizeReactionStatus(row.reaction);
   const allergenKeys = mergeAllergenKeys(normalizeAllergenKeys(row.allergen_keys), inferAllergenKeys(name));
   const status = row.has_status
     ? withFoodStatusDefaults({
         name_key: row.name_key,
         display_name: name,
+        liking,
         reaction,
         notes: row.notes ?? '',
         category_id: row.category_id,
@@ -508,6 +520,7 @@ function foodFromSummaryRow(row: FoodSummaryRow): FoodTried {
     lastDay: row.last_offered_day,
     isNew: Boolean(row.is_new),
     textures: normalizeTextures(row.textures),
+    liking,
     reaction,
     notes: row.notes ?? '',
     isAllergen: Boolean(row.is_allergen) || allergenKeys.length > 0,
@@ -534,14 +547,20 @@ export async function fetchFoodDetail(nameKey: string): Promise<FoodDetail | nul
   return { ...food, meals: foodMeals };
 }
 
+function matchesOptionFilter<T extends string>(value: T | null, filter: T | 'unrated' | ''): boolean {
+  if (filter === 'unrated') return !value;
+  if (filter) return value === filter;
+  return true;
+}
+
 export function filterFoods(foods: FoodTried[], filters: FoodFilters): FoodTried[] {
   const query = foodNameKey(filters.query);
   return foods
     .filter((food) => {
       if (query && !foodNameKey(food.name).includes(query)) return false;
       if (filters.categoryId && food.categoryId !== filters.categoryId) return false;
-      if (filters.reaction === 'unrated' && food.reaction) return false;
-      if (filters.reaction && filters.reaction !== 'unrated' && food.reaction !== filters.reaction) return false;
+      if (!matchesOptionFilter(food.liking, filters.liking)) return false;
+      if (!matchesOptionFilter(food.reaction, filters.reaction)) return false;
       if (filters.onlyNew && !food.isNew) return false;
       if (filters.onlyAllergens && !food.isAllergen) return false;
       return true;
@@ -579,7 +598,7 @@ export function buildDashboardSummary(input: {
     recentNewFoods: input.foods.filter((f) => f.isNew && f.firstDay >= recentThreshold).slice(0, 6),
     reactionsToWatch: input.foods.filter((f) => f.reaction === 'reaction').slice(0, 6),
     foodsToRetry: input.foods
-      .filter((f) => f.reaction === 'disliked' || (!f.reaction && f.count <= 2))
+      .filter((f) => f.liking === 'disliked' || (!f.liking && f.count <= 2))
       .slice(0, 5),
     plannedToday: input.plannedToday.filter((p) => !p.completed_meal_item_id),
     allergenTotal: progress.total,
@@ -659,6 +678,7 @@ function withMealDefaults(row: any): MealItem {
   return {
     ...row,
     name_key: row.name_key ?? foodNameKey(row.name ?? ''),
+    liking: row.liking ?? null,
     reaction: row.reaction ?? null,
     notes: row.notes ?? null,
     planned_item_id: row.planned_item_id ?? null,
@@ -670,6 +690,7 @@ function withFoodStatusDefaults(row: Partial<FoodStatus>): FoodStatus {
   return {
     name_key: row.name_key ?? '',
     display_name: row.display_name ?? row.name_key ?? '',
+    liking: row.liking ?? null,
     reaction: row.reaction ?? null,
     notes: row.notes ?? '',
     category_id: row.category_id ?? null,
@@ -701,10 +722,12 @@ function normalizeAllergenKeys(keys: unknown): AllergenKey[] {
   return keys.filter((key): key is AllergenKey => typeof key === 'string' && allowed.has(key as AllergenKey));
 }
 
-function normalizeReaction(reaction: unknown): Reaction | null {
-  return reaction === 'liked' || reaction === 'disliked' || reaction === 'reaction' || reaction === 'ok'
-    ? reaction
-    : null;
+function normalizeLiking(liking: unknown): Liking | null {
+  return liking === 'liked' || liking === 'disliked' ? liking : null;
+}
+
+function normalizeReactionStatus(reaction: unknown): ReactionStatus | null {
+  return reaction === 'reaction' || reaction === 'ok' ? reaction : null;
 }
 
 function normalizeTextures(textures: unknown): Texture[] {

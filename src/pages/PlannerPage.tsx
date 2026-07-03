@@ -85,7 +85,7 @@ export function PlannerPage() {
     );
   }, [planned]);
 
-  const retryFoods = foods.filter((food) => food.reaction === 'disliked' || (!food.reaction && food.count <= 2)).slice(0, 5);
+  const retryFoods = foods.filter((food) => food.liking === 'disliked' || (!food.liking && food.count <= 2)).slice(0, 5);
   const newIdeas = foods.filter((food) => food.isNew).slice(0, 5);
 
   return (

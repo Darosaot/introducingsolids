@@ -33,8 +33,9 @@ clasifica por categoría con un color personalizable.
 - ✨ **Alimento nuevo**: marca la primera vez que prueba un alimento.
 - 📝 **Notas por día** (reacciones, cómo comió…).
 - 📋 **Copiar día / semana** a otra fecha, para reutilizar menús.
-- 🥗 **Pestaña "Alimentos probados"**: todos los alimentos por categoría, con
-  **reacción por alimento** (le gustó / no le gustó / reacción / todo bien) y notas.
+- 🥗 **Pestaña "Alimentos probados"**: todos los alimentos por categoría, con dos
+  columnas independientes por alimento — **¿le gustó?** (le gustó / no le gustó)
+  y **¿hubo reacción?** (reacción / todo bien) — y notas.
 - 🛡️ **Seguridad**: Row Level Security; la clave de servicio nunca se expone en el
   navegador. Los datos del hogar son accesibles solo por usuarios activos.
 
@@ -51,7 +52,9 @@ clasifica por categoría con un color personalizable.
 │   ├── 0001_init.sql                # tablas, RLS, triggers, categorías por defecto
 │   ├── 0002_harden_functions.sql    # endurecimiento de funciones SECURITY DEFINER
 │   ├── 0003_shared_household_and_v2.sql  # hogar compartido, temas, textura, notas
-│   └── 0004_food_status.sql         # reacción/estado por alimento
+│   ├── 0004_food_status.sql         # reacción/estado por alimento
+│   ├── 0005_product_companion.sql   # perfil, planificación, resúmenes de alimentos
+│   └── 0006_split_liking_reaction.sql  # separa "le gustó" de "reacción/alergia"
 ├── supabase/seed_july2026.sql       # menú de ejemplo (julio 2026)
 └── src/
     ├── context/                     # AuthContext, CategoriesContext
@@ -111,6 +114,8 @@ npm run preview      # sirve el build de producción
    - `0002_harden_functions.sql`
    - `0003_shared_household_and_v2.sql`
    - `0004_food_status.sql`
+   - `0005_product_companion.sql`
+   - `0006_split_liking_reaction.sql`
    - (opcional) `supabase/seed_july2026.sql` para cargar un menú de ejemplo.
 
    (O con la CLI de Supabase: `supabase db push`.)
