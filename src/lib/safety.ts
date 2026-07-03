@@ -147,11 +147,16 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Coincidencia por palabra completa sobre el nombre ya normalizado. */
-function matchesKeyword(normalizedName: string, keyword: string): boolean {
+/**
+ * Coincidencia por palabra completa sobre el nombre ya normalizado, tolerando
+ * el plural español (`-s` / `-es`): así "lenteja" casa con "lentejas" y
+ * "salchicha" con "salchichas", pero "sal" sigue sin casar con "ensalada",
+ * "salmón" o "salsa".
+ */
+export function matchesKeyword(normalizedName: string, keyword: string): boolean {
   const normalizedKeyword = normalizeForMatch(keyword);
   if (!normalizedKeyword) return false;
-  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(normalizedKeyword)}(?:[^a-z0-9]|$)`).test(normalizedName);
+  return new RegExp(`(?:^|[^a-z0-9])${escapeRegExp(normalizedKeyword)}(?:s|es)?(?:[^a-z0-9]|$)`).test(normalizedName);
 }
 
 /**
