@@ -1632,6 +1632,14 @@ select:focus {
   color: var(--muted);
   border: 1px dashed var(--border);
 }
+.mini-list-item.streak-done {
+  background: #dcfce7;
+  color: #166534;
+}
+.mini-list-item.streak-partial {
+  background: #fef9c3;
+  color: #854d0e;
+}
 .safety-badges {
   display: inline-flex;
   flex-wrap: wrap;
