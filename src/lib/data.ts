@@ -25,14 +25,44 @@ export const ALLERGENS: Array<{ key: AllergenKey; label: string; keywords: strin
   {
     key: 'tree_nuts',
     label: 'Frutos secos',
-    keywords: ['almendra', 'nuez', 'avellana', 'pistacho', 'anacardo'],
+    keywords: ['almendra', 'nuez', 'nueces', 'avellana', 'pistacho', 'anacardo', 'frutos secos'],
   },
-  { key: 'dairy', label: 'Lácteos', keywords: ['leche', 'yogur', 'queso', 'lácteo', 'lacteo'] },
-  { key: 'gluten', label: 'Trigo / gluten', keywords: ['trigo', 'pan', 'pasta', 'gluten'] },
-  { key: 'fish', label: 'Pescado', keywords: ['pescado', 'salmón', 'salmon', 'merluza'] },
-  { key: 'shellfish', label: 'Marisco', keywords: ['marisco', 'gamba', 'langostino'] },
-  { key: 'soy', label: 'Soja', keywords: ['soja', 'tofu'] },
-  { key: 'sesame', label: 'Sésamo', keywords: ['sésamo', 'sesamo', 'tahini'] },
+  { key: 'dairy', label: 'Lácteos', keywords: ['leche', 'yogur', 'yogurt', 'queso', 'lácteo', 'lacteo'] },
+  { key: 'gluten', label: 'Trigo / gluten', keywords: ['trigo', 'pan', 'pasta', 'gluten', 'cous cous', 'cuscús', 'cus cus'] },
+  { key: 'fish', label: 'Pescado', keywords: ['pescado', 'salmón', 'salmon', 'merluza', 'lubina', 'anchoa'] },
+  { key: 'shellfish', label: 'Marisco', keywords: ['marisco', 'gamba', 'langostino', 'mejillón', 'mejillon', 'almeja', 'berberecho'] },
+  {
+    key: 'soy',
+    label: 'Soja / legumbres',
+    keywords: ['soja', 'tofu', 'lenteja', 'garbanzo', 'alubia', 'haba', 'hummus', 'falafel', 'guisante', 'judía', 'judia'],
+  },
+  { key: 'sesame', label: 'Sésamo', keywords: ['sésamo', 'sesamo', 'tahini', 'ajonjolí', 'ajonjoli'] },
+];
+
+export interface GuideFoodIdea {
+  name: string;
+  categoryKey: string;
+  reason: 'Hierro' | 'Energía' | 'Fruta/verdura';
+  note: string;
+}
+
+export const GUIDE_FOOD_IDEAS: GuideFoodIdea[] = [
+  { name: 'Lentejas', categoryKey: 'legumes', reason: 'Hierro', note: 'Ricas en hierro no hemo; combinar con fruta o tomate.' },
+  { name: 'Garbanzos', categoryKey: 'legumes', reason: 'Hierro', note: 'Base útil para hummus o falafel blando.' },
+  { name: 'Hummus', categoryKey: 'legumes', reason: 'Hierro', note: 'Legumbre con energía; vigilar sésamo si lleva tahini.' },
+  { name: 'Huevo', categoryKey: 'protein', reason: 'Hierro', note: 'Bien cocinado; introducir 3 días si es nuevo alérgeno.' },
+  { name: 'Pollo desmechado', categoryKey: 'protein', reason: 'Hierro', note: 'Tierno y fácil de adaptar en trozos grandes.' },
+  { name: 'Carne roja', categoryKey: 'protein', reason: 'Hierro', note: 'Hierro hemo; no superar 30-35 g/día entre 6-12 meses.' },
+  { name: 'Merluza', categoryKey: 'protein', reason: 'Hierro', note: 'Pescado bien cocinado, sin espinas.' },
+  { name: 'Quinoa', categoryKey: 'grains', reason: 'Hierro', note: 'Aporta hierro y energía.' },
+  { name: 'Avena', categoryKey: 'grains', reason: 'Hierro', note: 'Cereal con hierro; revisar textura blanda.' },
+  { name: 'Pan integral sin sal', categoryKey: 'grains', reason: 'Energía', note: 'Trigo/gluten; al inicio mejor corteza ligeramente tostada.' },
+  { name: 'Pasta', categoryKey: 'grains', reason: 'Energía', note: 'Cereal con energía; textura muy blanda.' },
+  { name: 'Aguacate', categoryKey: 'fruit', reason: 'Energía', note: 'Energía y textura fácil de adaptar.' },
+  { name: 'Boniato', categoryKey: 'vegetables', reason: 'Energía', note: 'Cocido hasta quedar blando.' },
+  { name: 'Plátano', categoryKey: 'fruit', reason: 'Energía', note: 'Fácil de ofrecer en tiras o chafado.' },
+  { name: 'Brócoli', categoryKey: 'vegetables', reason: 'Fruta/verdura', note: 'Cocido, blando y con tallo para agarrar.' },
+  { name: 'Pera', categoryKey: 'fruit', reason: 'Fruta/verdura', note: 'Madura o cocinada si necesita ablandarse.' },
 ];
 
 export const DEFAULT_FOOD_FILTERS: FoodFilters = {
@@ -90,6 +120,27 @@ export async function fetchBabyProfile(): Promise<BabyProfile | null> {
     .maybeSingle();
   if (error) throw error;
   return (data as BabyProfile) ?? null;
+}
+
+export async function saveBabyProfile(input: {
+  id?: string;
+  name: string;
+  birthDate: string | null;
+  solidsStartDate: string | null;
+}): Promise<BabyProfile> {
+  const row = {
+    name: input.name.trim() || 'Bebé',
+    birth_date: input.birthDate || null,
+    solids_start_date: input.solidsStartDate || null,
+    updated_at: new Date().toISOString(),
+  };
+
+  const query = input.id
+    ? supabase.from('baby_profile').update(row).eq('id', input.id)
+    : supabase.from('baby_profile').insert(row);
+  const { data, error } = await query.select('*').single();
+  if (error) throw error;
+  return data as BabyProfile;
 }
 
 // --- Categorías -------------------------------------------------------------
@@ -581,6 +632,44 @@ export function allergenProgress(foods: FoodTried[]): { introduced: number; tota
   return { introduced: introduced.size, total: ALLERGENS.length };
 }
 
+export interface AllergenIntroductionStatus {
+  key: AllergenKey;
+  label: string;
+  introduced: boolean;
+  firstDay: string | null;
+  lastDay: string | null;
+  foods: string[];
+}
+
+export function allergenIntroductionStatuses(foods: FoodTried[]): AllergenIntroductionStatus[] {
+  const byKey = new Map<AllergenKey, AllergenIntroductionStatus>(
+    ALLERGENS.map((allergen) => [
+      allergen.key,
+      {
+        key: allergen.key,
+        label: allergen.label,
+        introduced: false,
+        firstDay: null,
+        lastDay: null,
+        foods: [],
+      },
+    ]),
+  );
+
+  for (const food of foods) {
+    for (const key of food.allergenKeys) {
+      const row = byKey.get(key);
+      if (!row) continue;
+      row.introduced = true;
+      if (!row.firstDay || food.firstDay < row.firstDay) row.firstDay = food.firstDay;
+      if (!row.lastDay || food.lastDay > row.lastDay) row.lastDay = food.lastDay;
+      if (!row.foods.includes(food.name)) row.foods.push(food.name);
+    }
+  }
+
+  return Array.from(byKey.values());
+}
+
 export function buildDashboardSummary(input: {
   todayMeals: MealItem[];
   dayNote: DayNote | null;
@@ -737,7 +826,7 @@ function normalizeTextures(textures: unknown): Texture[] {
   );
 }
 
-function inferAllergenKeys(name: string): AllergenKey[] {
+export function inferAllergenKeys(name: string): AllergenKey[] {
   const normalized = foodNameKey(name)
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');

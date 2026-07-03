@@ -8,6 +8,8 @@ import {
   copyDay,
   deleteMeal,
   fetchDayNote,
+  foodNameKey,
+  GUIDE_FOOD_IDEAS,
   previewCopyDay,
   updateMeal,
   upsertDayNote,
@@ -16,19 +18,18 @@ import {
 } from '../lib/data';
 import { dayKey, fmt } from '../lib/date';
 import { LIKING_OPTIONS, MEAL_SLOTS, REACTION_OPTIONS, TEXTURES, t } from '../lib/i18n';
-import type { Liking, MealItem, MealSlot, ReactionStatus, Texture } from '../lib/types';
+import type { FoodTried, Liking, MealItem, MealSlot, ReactionStatus, Texture } from '../lib/types';
 import { CategoryDot } from './CategoryDot';
 
 interface Props {
   day: Date;
   meals: MealItem[];
+  foodSuggestions?: FoodTried[];
   onClose: () => void;
   onChanged: () => void;
 }
 
-const COMMON_FOODS = ['Plátano', 'Aguacate', 'Huevo', 'Patata', 'Pera', 'Pan'];
-
-export function DayModal({ day, meals, onClose, onChanged }: Props) {
+export function DayModal({ day, meals, foodSuggestions = [], onClose, onChanged }: Props) {
   const { session } = useAuth();
   const { choose, confirm } = useConfirm();
   const { showToast } = useToast();
@@ -42,13 +43,16 @@ export function DayModal({ day, meals, onClose, onChanged }: Props) {
   const key = dayKey(day);
   const dayItems = useMemo(() => meals.filter((m) => m.day === key), [meals, key]);
   const suggestions = useMemo(() => {
-    const names = new Set<string>();
-    for (const meal of meals) {
-      if (meal.name.trim()) names.add(meal.name.trim());
+    const names = new Map<string, string>();
+    for (const food of foodSuggestions) {
+      if (food.name.trim()) names.set(food.nameKey, food.name.trim());
     }
-    for (const name of COMMON_FOODS) names.add(name);
-    return Array.from(names).slice(0, 10);
-  }, [meals]);
+    for (const meal of meals) {
+      if (meal.name.trim()) names.set(meal.name_key || foodNameKey(meal.name), meal.name.trim());
+    }
+    for (const idea of GUIDE_FOOD_IDEAS) names.set(foodNameKey(idea.name), idea.name);
+    return Array.from(names.values()).slice(0, 12);
+  }, [foodSuggestions, meals]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
