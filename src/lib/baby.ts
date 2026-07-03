@@ -68,3 +68,10 @@ export function formatSolidsTime(solidsStartDate: string | null | undefined, tod
 export function needsBabyProfileSetup(profile: BabyProfile | null): boolean {
   return !profile?.birth_date || !profile?.solids_start_date;
 }
+
+/** Edad del bebé en meses completos, o `null` si no hay fecha válida. */
+export function ageInMonthsOn(birthDate: string | null | undefined, on: Date = new Date()): number | null {
+  const birth = parseDateKey(birthDate);
+  if (!birth || birth > on) return null;
+  return differenceInMonths(on, birth);
+}

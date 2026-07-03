@@ -1588,6 +1588,39 @@ select:focus {
   font-size: 0.75rem;
   font-weight: 700;
 }
+.safety-badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  align-self: flex-start;
+}
+.safety-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.safety-badge.is-avoid {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.safety-badge.is-caution {
+  background: #fef3c7;
+  color: #92400e;
+}
+.quick-guide-notes strong.safety-note.is-avoid {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+}
+.quick-guide-notes strong.safety-note.is-caution {
+  color: #92400e;
+  background: #fffbeb;
+}
 .detail-metrics {
   grid-template-columns: repeat(4, 1fr);
   margin-bottom: 1rem;

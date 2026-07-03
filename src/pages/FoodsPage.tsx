@@ -1,12 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AllergenBadge } from '../components/AllergenBadge';
+import { SafetyBadge } from '../components/SafetyBadge';
 import { ReactionGroup } from '../components/ReactionGroup';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
+import { ageInMonthsOn } from '../lib/baby';
+import { foodSafetyWarnings } from '../lib/safety';
 import {
   DEFAULT_FOOD_FILTERS,
+  fetchBabyProfile,
   fetchFoodsTried,
   filterFoods,
   updateFoodCategory,
@@ -23,13 +27,19 @@ export function FoodsPage() {
   const { categories, byId } = useCategories();
   const { showToast } = useToast();
   const [foods, setFoods] = useState<FoodTried[]>([]);
+  const [ageMonths, setAgeMonths] = useState<number | null>(null);
   const [filters, setFilters] = useState<FoodFilters>(DEFAULT_FOOD_FILTERS);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setFoods(await fetchFoodsTried());
+      const [foodRows, baby] = await Promise.all([
+        fetchFoodsTried(),
+        fetchBabyProfile().catch(() => null),
+      ]);
+      setFoods(foodRows);
+      setAgeMonths(ageInMonthsOn(baby?.birth_date));
     } catch (e) {
       console.error('Error cargando alimentos:', e);
       showToast({ title: t.common.error, tone: 'error' });
@@ -129,6 +139,7 @@ export function FoodsPage() {
               color={(food.categoryId && byId[food.categoryId]?.color) || '#CBD5E1'}
               categoryName={(food.categoryId && byId[food.categoryId]?.name) || t.foods.noCategory}
               categories={categories}
+              ageMonths={ageMonths}
               onSave={saveStatus}
               onCategory={changeCategory}
             />
@@ -229,6 +240,7 @@ function FoodCard({
   color,
   categoryName,
   categories,
+  ageMonths,
   onSave,
   onCategory,
 }: {
@@ -236,12 +248,14 @@ function FoodCard({
   color: string;
   categoryName: string;
   categories: Category[];
+  ageMonths: number | null;
   onSave: (food: FoodTried, patch: ReactionPatch, notes: string) => void;
   onCategory: (food: FoodTried, categoryId: string | null) => void;
 }) {
   const [notes, setNotes] = useState(food.notes ?? '');
   const liking = food.liking ?? null;
   const reaction = food.reaction ?? null;
+  const safetyWarnings = foodSafetyWarnings(food.name, ageMonths);
 
   return (
     <article className={`food-card library-card ${reaction === 'reaction' ? 'has-reaction' : ''}`} style={{ borderLeftColor: color }}>
@@ -262,6 +276,7 @@ function FoodCard({
       </div>
 
       <AllergenBadge keys={food.allergenKeys} />
+      <SafetyBadge warnings={safetyWarnings} />
 
       <label className="food-cat-row">
         <span className="muted small">{t.meals.category}</span>
