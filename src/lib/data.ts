@@ -260,6 +260,29 @@ export async function upsertFoodStatus(input: {
 }
 
 /**
+ * Cambia la categoría de un alimento en TODAS sus apariciones del diario del
+ * hogar (todos los `meal_items` cuyo nombre normalizado coincida). Devuelve el
+ * número de registros actualizados.
+ */
+export async function updateFoodCategory(
+  nameKey: string,
+  categoryId: string | null,
+): Promise<number> {
+  const { data, error } = await supabase.from('meal_items').select('id, name');
+  if (error) throw error;
+  const ids = (data ?? [])
+    .filter((m) => foodNameKey(m.name) === nameKey)
+    .map((m) => m.id);
+  if (ids.length === 0) return 0;
+  const { error: updErr } = await supabase
+    .from('meal_items')
+    .update({ category_id: categoryId })
+    .in('id', ids);
+  if (updErr) throw updErr;
+  return ids.length;
+}
+
+/**
  * Agrupa las comidas por alimento (nombre normalizado). Función pura, testeable.
  */
 export function aggregateFoods(
