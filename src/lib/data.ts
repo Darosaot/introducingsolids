@@ -632,6 +632,10 @@ export function allergenProgress(foods: FoodTried[]): { introduced: number; tota
   return { introduced: introduced.size, total: ALLERGENS.length };
 }
 
+export function foodsIntroducedBy(foods: FoodTried[], throughDay: string): FoodTried[] {
+  return foods.filter((food) => food.firstDay <= throughDay);
+}
+
 export interface AllergenIntroductionStatus {
   key: AllergenKey;
   label: string;
@@ -678,15 +682,16 @@ export function buildDashboardSummary(input: {
   todayKey: string;
 }): DashboardSummary {
   const recentThreshold = dayKey(addDays(dateFromKey(input.todayKey), -7));
-  const progress = allergenProgress(input.foods);
+  const introducedFoods = foodsIntroducedBy(input.foods, input.todayKey);
+  const progress = allergenProgress(introducedFoods);
   return {
     totalFoodsToday: input.todayMeals.length,
     newFoodsToday: input.todayMeals.filter((m) => m.is_new).length,
     reactionCountToday: input.todayMeals.filter((m) => m.reaction === 'reaction').length,
     hasDayNote: Boolean(input.dayNote?.note?.trim()),
-    recentNewFoods: input.foods.filter((f) => f.isNew && f.firstDay >= recentThreshold).slice(0, 6),
-    reactionsToWatch: input.foods.filter((f) => f.reaction === 'reaction').slice(0, 6),
-    foodsToRetry: input.foods
+    recentNewFoods: introducedFoods.filter((f) => f.isNew && f.firstDay >= recentThreshold).slice(0, 6),
+    reactionsToWatch: introducedFoods.filter((f) => f.reaction === 'reaction').slice(0, 6),
+    foodsToRetry: introducedFoods
       .filter((f) => f.liking === 'disliked' || (!f.liking && f.count <= 2))
       .slice(0, 5),
     plannedToday: input.plannedToday.filter((p) => !p.completed_meal_item_id),

@@ -17,6 +17,7 @@ import {
   fetchFoodsTried,
   fetchMealsInRange,
   fetchPlannedMealsInRange,
+  foodsIntroducedBy,
   foodNameKey,
   GUIDE_FOOD_IDEAS,
   inferAllergenKeys,
@@ -70,7 +71,8 @@ export function TodayPage() {
 
   const babyAge = formatBabyAge(profile?.birth_date, today);
   const solidsTime = formatSolidsTime(profile?.solids_start_date, today);
-  const allergenStatuses = useMemo(() => allergenIntroductionStatuses(foods), [foods]);
+  const introducedFoods = useMemo(() => foodsIntroducedBy(foods, todayKey), [foods, todayKey]);
+  const allergenStatuses = useMemo(() => allergenIntroductionStatuses(introducedFoods), [introducedFoods]);
 
   const focusQuickAdd = useCallback(() => {
     quickInputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
@@ -101,7 +103,7 @@ export function TodayPage() {
       ) : (
         <>
           {needsBabyProfileSetup(profile) && <BabySetupNudge />}
-          <QuickAddMeal todayKey={todayKey} foods={foods} inputRef={quickInputRef} onSaved={load} />
+          <QuickAddMeal todayKey={todayKey} foods={introducedFoods} inputRef={quickInputRef} onSaved={load} />
 
           <section className="today-grid">
             <div className="today-main-panel">
@@ -175,7 +177,7 @@ export function TodayPage() {
         <DayModal
           day={today}
           meals={meals}
-          foodSuggestions={foods}
+          foodSuggestions={introducedFoods}
           onClose={() => setShowDay(false)}
           onChanged={load}
         />
