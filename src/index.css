@@ -1047,8 +1047,25 @@ select:focus {
 .food-name {
   font-weight: 700;
 }
+.reaction-columns {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+.reaction-columns .food-reactions {
+  flex: 1 1 150px;
+  margin-bottom: 0;
+}
+.reaction-group-label {
+  flex-basis: 100%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+}
 .food-reactions {
   display: flex;
+  align-items: center;
   gap: 0.3rem;
   flex-wrap: wrap;
   margin-bottom: 0.5rem;

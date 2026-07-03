@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AllergenBadge } from '../components/AllergenBadge';
+import { ReactionGroup } from '../components/ReactionGroup';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
@@ -12,8 +13,10 @@ import {
   upsertFoodStatus,
 } from '../lib/data';
 import { fmt, fromKey } from '../lib/date';
-import { REACTIONS, t } from '../lib/i18n';
-import type { Category, FoodFilters, FoodTried, Reaction } from '../lib/types';
+import { LIKING_OPTIONS, REACTION_OPTIONS, t } from '../lib/i18n';
+import type { Category, FoodFilters, FoodTried, Liking, ReactionStatus } from '../lib/types';
+
+type ReactionPatch = { liking?: Liking | null; reaction?: ReactionStatus | null };
 
 export function FoodsPage() {
   const { session } = useAuth();
@@ -41,19 +44,23 @@ export function FoodsPage() {
 
   const visibleFoods = useMemo(() => filterFoods(foods, filters), [foods, filters]);
 
-  async function saveStatus(food: FoodTried, reaction: Reaction | null, notes: string) {
+  async function saveStatus(food: FoodTried, patch: ReactionPatch, notes: string) {
     if (!session) return;
+    const liking = 'liking' in patch ? patch.liking ?? null : food.liking ?? null;
+    const reaction = 'reaction' in patch ? patch.reaction ?? null : food.reaction ?? null;
     const previous = foods;
     setFoods((prev) =>
       prev.map((f) =>
         f.nameKey === food.nameKey
           ? {
               ...f,
+              liking,
               reaction,
               notes,
               status: {
                 name_key: food.nameKey,
                 display_name: f.name,
+                liking,
                 reaction,
                 notes,
                 category_id: f.categoryId,
@@ -71,6 +78,7 @@ export function FoodsPage() {
     try {
       await upsertFoodStatus({
         name: food.name,
+        liking,
         reaction,
         notes,
         userId: session.user.id,
@@ -161,12 +169,25 @@ function FoodSearchFilters({
         ))}
       </select>
       <select
+        value={filters.liking}
+        onChange={(e) => onChange({ ...filters, liking: e.target.value as FoodFilters['liking'] })}
+        aria-label={t.foods.howLiked}
+      >
+        <option value="">{t.foods.allLiking}</option>
+        {LIKING_OPTIONS.map((liking) => (
+          <option value={liking} key={liking}>
+            {t.reactions[liking].label}
+          </option>
+        ))}
+        <option value="unrated">{t.foods.unrated}</option>
+      </select>
+      <select
         value={filters.reaction}
         onChange={(e) => onChange({ ...filters, reaction: e.target.value as FoodFilters['reaction'] })}
-        aria-label={t.foods.allReactions}
+        aria-label={t.foods.howReacted}
       >
         <option value="">{t.foods.allReactions}</option>
-        {REACTIONS.map((reaction) => (
+        {REACTION_OPTIONS.map((reaction) => (
           <option value={reaction} key={reaction}>
             {t.reactions[reaction].label}
           </option>
@@ -215,10 +236,11 @@ function FoodCard({
   color: string;
   categoryName: string;
   categories: Category[];
-  onSave: (food: FoodTried, reaction: Reaction | null, notes: string) => void;
+  onSave: (food: FoodTried, patch: ReactionPatch, notes: string) => void;
   onCategory: (food: FoodTried, categoryId: string | null) => void;
 }) {
   const [notes, setNotes] = useState(food.notes ?? '');
+  const liking = food.liking ?? null;
   const reaction = food.reaction ?? null;
 
   return (
@@ -256,19 +278,19 @@ function FoodCard({
         </select>
       </label>
 
-      <div className="food-reactions" role="group" aria-label={t.foods.howItWent}>
-        {REACTIONS.map((r) => (
-          <button
-            key={r}
-            className={`reaction-btn ${reaction === r ? 'active' : ''}`}
-            onClick={() => onSave(food, reaction === r ? null : r, notes)}
-            title={t.reactions[r].label}
-            aria-pressed={reaction === r}
-          >
-            <span aria-hidden>{t.reactions[r].icon}</span>
-            <span className="reaction-label">{t.reactions[r].label}</span>
-          </button>
-        ))}
+      <div className="reaction-columns">
+        <ReactionGroup
+          label={t.foods.howLiked}
+          options={LIKING_OPTIONS}
+          value={liking}
+          onSelect={(liking) => onSave(food, { liking }, notes)}
+        />
+        <ReactionGroup
+          label={t.foods.howReacted}
+          options={REACTION_OPTIONS}
+          value={reaction}
+          onSelect={(reaction) => onSave(food, { reaction }, notes)}
+        />
       </div>
 
       <input
@@ -277,7 +299,7 @@ function FoodCard({
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={() => {
-          if ((food.notes ?? '') !== notes) onSave(food, reaction, notes);
+          if ((food.notes ?? '') !== notes) onSave(food, {}, notes);
         }}
         placeholder={t.foods.notesPlaceholder}
         aria-label={t.foods.notesPlaceholder}

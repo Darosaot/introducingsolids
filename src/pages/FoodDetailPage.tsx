@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { AllergenBadge } from '../components/AllergenBadge';
+import { ReactionGroup } from '../components/ReactionGroup';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
@@ -12,8 +13,8 @@ import {
   upsertFoodStatus,
 } from '../lib/data';
 import { dayKey, fmt, fromKey } from '../lib/date';
-import { REACTIONS, t } from '../lib/i18n';
-import type { AllergenKey, FoodDetail, Reaction } from '../lib/types';
+import { LIKING_OPTIONS, REACTION_OPTIONS, t } from '../lib/i18n';
+import type { AllergenKey, FoodDetail, Liking, ReactionStatus } from '../lib/types';
 
 export function FoodDetailPage() {
   const { nameKey = '' } = useParams();
@@ -40,7 +41,8 @@ export function FoodDetailPage() {
   }, [load]);
 
   async function saveStatus(patch: {
-    reaction?: Reaction | null;
+    liking?: Liking | null;
+    reaction?: ReactionStatus | null;
     categoryId?: string | null;
     allergenKeys?: AllergenKey[];
     isAllergen?: boolean;
@@ -52,6 +54,7 @@ export function FoodDetailPage() {
       Object.prototype.hasOwnProperty.call(patch, key);
     await upsertFoodStatus({
       name: detail.name,
+      liking: has('liking') ? patch.liking ?? null : detail.liking,
       reaction: has('reaction') ? patch.reaction ?? null : detail.reaction,
       notes: has('notes') ? patch.notes ?? '' : notes,
       userId: session.user.id,
@@ -124,16 +127,19 @@ export function FoodDetailPage() {
             ))}
           </select>
         </label>
-        <div className="food-reactions" role="group" aria-label={t.foods.howItWent}>
-          {REACTIONS.map((reaction) => (
-            <button
-              key={reaction}
-              className={`reaction-btn ${detail.reaction === reaction ? 'active' : ''}`}
-              onClick={() => void saveStatus({ reaction: detail.reaction === reaction ? null : reaction })}
-            >
-              {t.reactions[reaction].icon} {t.reactions[reaction].label}
-            </button>
-          ))}
+        <div className="reaction-columns">
+          <ReactionGroup
+            label={t.foods.howLiked}
+            options={LIKING_OPTIONS}
+            value={detail.liking}
+            onSelect={(liking) => void saveStatus({ liking })}
+          />
+          <ReactionGroup
+            label={t.foods.howReacted}
+            options={REACTION_OPTIONS}
+            value={detail.reaction}
+            onSelect={(reaction) => void saveStatus({ reaction })}
+          />
         </div>
         <div className="allergen-checks">
           {ALLERGENS.map((allergen) => {
@@ -173,6 +179,7 @@ export function FoodDetailPage() {
               <div>
                 {meal.texture && <span>{t.textures[meal.texture].label}</span>}
                 {meal.is_new && <span>✨ {t.meals.isNew}</span>}
+                {meal.liking && <span>{t.reactions[meal.liking].label}</span>}
                 {meal.reaction && <span>{t.reactions[meal.reaction].label}</span>}
                 {meal.notes && <span>{meal.notes}</span>}
               </div>

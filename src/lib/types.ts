@@ -4,7 +4,9 @@ export type Theme = 'verde' | 'rosa' | 'azul' | 'neutro';
 
 export type Texture = 'puree' | 'mashed' | 'chunks';
 
-export type Reaction = 'liked' | 'disliked' | 'reaction' | 'ok';
+export type Liking = 'liked' | 'disliked';
+
+export type ReactionStatus = 'reaction' | 'ok';
 
 export type AllergenKey =
   | 'egg'
@@ -54,7 +56,8 @@ export interface MealItem {
   category_id: string | null;
   texture: Texture | null;
   is_new: boolean;
-  reaction: Reaction | null;
+  liking: Liking | null;
+  reaction: ReactionStatus | null;
   notes: string | null;
   planned_item_id: string | null;
   sort_order: number;
@@ -70,7 +73,8 @@ export interface DayNote {
 export interface FoodStatus {
   name_key: string;
   display_name: string;
-  reaction: Reaction | null;
+  liking: Liking | null;
+  reaction: ReactionStatus | null;
   notes: string;
   category_id: string | null;
   is_allergen: boolean;
@@ -91,7 +95,8 @@ export interface FoodTried {
   lastDay: string;
   isNew: boolean;
   textures: Texture[];
-  reaction: Reaction | null;
+  liking: Liking | null;
+  reaction: ReactionStatus | null;
   notes: string;
   isAllergen: boolean;
   allergenKeys: AllergenKey[];
@@ -131,7 +136,8 @@ export interface FoodDetail extends FoodTried {
 export interface FoodFilters {
   query: string;
   categoryId: string;
-  reaction: Reaction | 'unrated' | '';
+  liking: Liking | 'unrated' | '';
+  reaction: ReactionStatus | 'unrated' | '';
   onlyNew: boolean;
   onlyAllergens: boolean;
   sort: 'first' | 'last' | 'count' | 'name';
