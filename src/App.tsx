@@ -1,9 +1,11 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { CategoriesProvider } from './context/CategoriesContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { Layout } from './components/Layout';
 import { CalendarPage } from './pages/CalendarPage';
-import { CategoriesPage } from './pages/CategoriesPage';
+import { SettingsPage } from './pages/SettingsPage';
+import { FoodsPage } from './pages/FoodsPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
 import { t } from './lib/i18n';
@@ -13,7 +15,7 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
   return isAdmin ? children : <Navigate to="/" replace />;
 }
 
-export default function App() {
+function AppContent() {
   const { session, loading } = useAuth();
 
   if (loading) {
@@ -34,7 +36,8 @@ export default function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<CalendarPage />} />
-            <Route path="categorias" element={<CategoriesPage />} />
+            <Route path="alimentos" element={<FoodsPage />} />
+            <Route path="ajustes" element={<SettingsPage />} />
             <Route
               path="admin"
               element={
@@ -48,5 +51,13 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </CategoriesProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <AppContent />
+    </ThemeProvider>
   );
 }

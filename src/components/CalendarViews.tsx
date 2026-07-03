@@ -67,7 +67,10 @@ export function MonthView({ cursor, getDay, onSelectDay }: ViewProps) {
               ].join(' ')}
               onClick={() => onSelectDay(d)}
             >
-              <span className="month-daynum">{fmt.dayNum(d)}</span>
+              <span className="month-daynum">
+                {fmt.dayNum(d)}
+                {items.some((it) => it.is_new) && <span className="new-badge">✨</span>}
+              </span>
               <DayDots items={items} />
             </button>
           );
@@ -112,6 +115,8 @@ export function WeekView({ cursor, getDay, onSelectDay }: ViewProps) {
                             }}
                           />
                           <span className="week-item-name">{it.name}</span>
+                          {it.texture && <span className="texture-icon">{t.textures[it.texture].icon}</span>}
+                          {it.is_new && <span className="new-badge">✨</span>}
                         </div>
                       ))
                     )}
@@ -152,6 +157,8 @@ export function DayView({ cursor, getDay, onSelectDay }: ViewProps) {
                       }}
                     />
                     <span className="chip-name">{it.name}</span>
+                    {it.texture && <span className="texture-icon">{t.textures[it.texture].icon}</span>}
+                    {it.is_new && <span className="new-badge">✨</span>}
                   </span>
                 ))
               )}
