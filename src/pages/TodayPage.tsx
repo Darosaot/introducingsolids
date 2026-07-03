@@ -5,7 +5,9 @@ import { CategoryDot } from '../components/CategoryDot';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
-import { formatBabyAge, formatSolidsTime, needsBabyProfileSetup } from '../lib/baby';
+import { ageInMonthsOn, formatBabyAge, formatSolidsTime, needsBabyProfileSetup } from '../lib/baby';
+import { foodSafetyWarnings } from '../lib/safety';
+import { SafetyBadge } from '../components/SafetyBadge';
 import {
   addMeal,
   ALLERGENS,
@@ -71,6 +73,7 @@ export function TodayPage() {
 
   const babyAge = formatBabyAge(profile?.birth_date, today);
   const solidsTime = formatSolidsTime(profile?.solids_start_date, today);
+  const ageMonths = ageInMonthsOn(profile?.birth_date, today);
   const introducedFoods = useMemo(() => foodsIntroducedBy(foods, todayKey), [foods, todayKey]);
   const allergenStatuses = useMemo(() => allergenIntroductionStatuses(introducedFoods), [introducedFoods]);
 
@@ -103,7 +106,7 @@ export function TodayPage() {
       ) : (
         <>
           {needsBabyProfileSetup(profile) && <BabySetupNudge />}
-          <QuickAddMeal todayKey={todayKey} foods={introducedFoods} inputRef={quickInputRef} onSaved={load} />
+          <QuickAddMeal todayKey={todayKey} foods={introducedFoods} ageMonths={ageMonths} inputRef={quickInputRef} onSaved={load} />
 
           <section className="today-grid">
             <div className="today-main-panel">
@@ -136,6 +139,7 @@ export function TodayPage() {
                               {meal.name}
                               {meal.is_new && <span className="new-badge">✨</span>}
                               {meal.reaction === 'reaction' && <span className="reaction-warn">Reacción</span>}
+                              <SafetyBadge warnings={foodSafetyWarnings(meal.name, ageMonths)} />
                             </span>
                           ))
                         )}
@@ -228,11 +232,13 @@ function buildQuickSuggestions(foods: FoodTried[], categories: Category[]): Quic
 function QuickAddMeal({
   todayKey,
   foods,
+  ageMonths,
   inputRef,
   onSaved,
 }: {
   todayKey: string;
   foods: FoodTried[];
+  ageMonths: number | null;
   inputRef: React.RefObject<HTMLInputElement>;
   onSaved: () => void;
 }) {
@@ -254,6 +260,7 @@ function QuickAddMeal({
   const exactSuggestion = suggestions.find((suggestion) => foodNameKey(suggestion.name) === normalizedName);
   const alreadyTried = foods.some((food) => food.nameKey === normalizedName);
   const allergenKeys = useMemo(() => inferAllergenKeys(name), [name]);
+  const safetyWarnings = useMemo(() => foodSafetyWarnings(name, ageMonths), [name, ageMonths]);
   const recentNewFood = useMemo(() => {
     if (!normalizedName) return null;
     const today = fromKey(todayKey);
@@ -389,6 +396,11 @@ function QuickAddMeal({
             {t.today.allergenDetected}: {allergenKeys.map((key) => tAllergenLabel(key)).join(', ')}
           </strong>
         )}
+        {safetyWarnings.map((warning) => (
+          <strong key={warning.id} className={warning.severity === 'avoid' ? 'safety-note is-avoid' : 'safety-note is-caution'}>
+            {warning.severity === 'avoid' ? '⛔' : '⚠️'} {warning.label}: {warning.message}
+          </strong>
+        ))}
         {recentNewFood && <span>Nuevo reciente: {recentNewFood.name}. Evita mezclar nuevas introducciones hoy si estás observando tolerancia.</span>}
       </div>
     </section>
