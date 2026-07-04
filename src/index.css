@@ -238,6 +238,86 @@ select:focus {
   padding: 0.65rem;
 }
 
+/* --- Landing (pantalla de inicio de sesión) ------------------------------ */
+.login-page {
+  padding: clamp(1rem, 4vw, 3rem);
+}
+.login-layout {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: clamp(1.5rem, 4vw, 3.5rem);
+  align-items: center;
+  width: 100%;
+  max-width: 1040px;
+}
+.login-hero {
+  min-width: 0;
+}
+.login-headline {
+  font-size: clamp(1.5rem, 3.2vw, 2.2rem);
+  line-height: 1.15;
+  margin: 0.4rem 0 0.6rem;
+  color: var(--text);
+}
+.login-lead {
+  font-size: 1.02rem;
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0 0 1.4rem;
+  max-width: 46ch;
+}
+.feature-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.4rem;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1.2rem;
+}
+.feature-item {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+}
+.feature-item strong {
+  display: block;
+  font-size: 0.92rem;
+  color: var(--text);
+}
+.feature-item .muted {
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.feature-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.login-disclaimer {
+  font-size: 0.78rem;
+  color: var(--muted);
+  border-left: 3px solid var(--border);
+  padding-left: 0.7rem;
+  max-width: 52ch;
+}
+.login-auth {
+  max-width: none;
+}
+@media (max-width: 860px) {
+  .login-page {
+    align-items: flex-start;
+  }
+  .login-layout {
+    grid-template-columns: 1fr;
+    max-width: 460px;
+    gap: 1.5rem;
+  }
+  .feature-list {
+    grid-template-columns: 1fr;
+    gap: 0.7rem;
+  }
+}
+
 /* --- App shell ----------------------------------------------------------- */
 .app-shell {
   min-height: 100%;

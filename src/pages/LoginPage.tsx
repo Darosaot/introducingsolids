@@ -36,65 +36,87 @@ export function LoginPage() {
   }
 
   return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <div className="brand">
-          <span className="brand-mark" aria-hidden>🍼</span>
-          <div>
-            <h1>{t.appName}</h1>
-            <p className="muted">{t.tagline}</p>
+    <div className="auth-wrap login-page">
+      <div className="login-layout">
+        <section className="login-hero">
+          <div className="brand">
+            <span className="brand-mark" aria-hidden>🍼</span>
+            <div>
+              <h1>{t.appName}</h1>
+              <p className="muted">{t.tagline}</p>
+            </div>
           </div>
-        </div>
 
-        <h2>{mode === 'in' ? t.auth.signInTitle : t.auth.signUpTitle}</h2>
+          <h2 className="login-headline">{t.landing.headline}</h2>
+          <p className="login-lead">{t.landing.sub}</p>
 
-        {!configured && <div className="banner warn">{t.auth.missingConfig}</div>}
-        {error && <div className="banner error">{error}</div>}
-        {info && <div className="banner ok">{info}</div>}
+          <ul className="feature-list">
+            {t.landing.features.map((f) => (
+              <li className="feature-item" key={f.title}>
+                <span className="feature-icon" aria-hidden>{f.icon}</span>
+                <div>
+                  <strong>{f.title}</strong>
+                  <span className="muted">{f.text}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
 
-        <form onSubmit={handleSubmit} className="auth-form">
-          <label>
-            {t.auth.email}
-            <input
-              type="email"
-              autoComplete="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </label>
-          <label>
-            {t.auth.password}
-            <input
-              type="password"
-              autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
-              required
-              minLength={6}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </label>
-          <button type="submit" className="primary" disabled={busy}>
-            {busy
-              ? mode === 'in'
-                ? t.auth.signingIn
-                : t.auth.signingUp
-              : mode === 'in'
-                ? t.auth.signInButton
-                : t.auth.signUpButton}
+          <p className="login-disclaimer">{t.landing.disclaimer}</p>
+        </section>
+
+        <div className="auth-card login-auth">
+          <h2>{mode === 'in' ? t.auth.signInTitle : t.landing.ctaTitle}</h2>
+          <p className="muted">{mode === 'in' ? t.tagline : t.landing.ctaSub}</p>
+
+          {!configured && <div className="banner warn">{t.auth.missingConfig}</div>}
+          {error && <div className="banner error">{error}</div>}
+          {info && <div className="banner ok">{info}</div>}
+
+          <form onSubmit={handleSubmit} className="auth-form">
+            <label>
+              {t.auth.email}
+              <input
+                type="email"
+                autoComplete="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </label>
+            <label>
+              {t.auth.password}
+              <input
+                type="password"
+                autoComplete={mode === 'in' ? 'current-password' : 'new-password'}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </label>
+            <button type="submit" className="primary" disabled={busy}>
+              {busy
+                ? mode === 'in'
+                  ? t.auth.signingIn
+                  : t.auth.signingUp
+                : mode === 'in'
+                  ? t.auth.signInButton
+                  : t.auth.signUpButton}
+            </button>
+          </form>
+
+          <button
+            className="link-btn"
+            onClick={() => {
+              setMode((m) => (m === 'in' ? 'up' : 'in'));
+              setError(null);
+              setInfo(null);
+            }}
+          >
+            {mode === 'in' ? t.auth.toggleToSignUp : t.auth.toggleToSignIn}
           </button>
-        </form>
-
-        <button
-          className="link-btn"
-          onClick={() => {
-            setMode((m) => (m === 'in' ? 'up' : 'in'));
-            setError(null);
-            setInfo(null);
-          }}
-        >
-          {mode === 'in' ? t.auth.toggleToSignUp : t.auth.toggleToSignIn}
-        </button>
+        </div>
       </div>
     </div>
   );
