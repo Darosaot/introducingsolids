@@ -5,6 +5,23 @@ export const t = {
   appName: 'Comidas del Bebé',
   tagline: 'Seguimiento de la alimentación',
 
+  // Landing / presentación en la pantalla de inicio de sesión
+  landing: {
+    headline: 'La introducción de sólidos de tu bebé, sin agobios',
+    sub: 'Registra cada comida y deja que la app te guíe con lo que de verdad importa —hierro, alérgenos y seguridad— siguiendo el enfoque BLW/BLISS.',
+    features: [
+      { icon: '📅', title: 'Diario del día a día', text: 'Registra las comidas por franjas y revísalas por día, semana, mes o año.' },
+      { icon: '🍽️', title: 'Plato completo', text: 'Comprueba de un vistazo si el día lleva hierro + energía + fruta/verdura, y te avisa si falta el hierro.' },
+      { icon: '⚠️', title: 'Seguridad por edad', text: 'Te avisa al registrar miel, sal, pescados grandes o alimentos con riesgo de atragantamiento según la edad del bebé.' },
+      { icon: '🧬', title: 'Alérgenos con cabeza', text: 'Sigue el protocolo de 3 días seguidos y controla qué alérgenos ya has introducido.' },
+      { icon: '🥗', title: 'Alimentos probados', text: 'Guarda si le gustó y si hubo reacción, con notas por cada alimento.' },
+      { icon: '👨‍👩‍👧', title: 'En familia', text: 'Varios cuidadores comparten el mismo diario. Invita con un código o un enlace.' },
+    ],
+    ctaTitle: 'Empieza gratis',
+    ctaSub: 'Crea tu cuenta y la familia de tu bebé en un minuto.',
+    disclaimer: 'Guía orientativa basada en materiales de pediatría (alimentación complementaria y BLW). No sustituye el consejo de tu pediatra.',
+  },
+
   // Navegación
   nav: {
     today: 'Hoy',
