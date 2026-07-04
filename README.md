@@ -57,7 +57,8 @@ clasifica por categoría con un color personalizable.
 │   ├── 0006_split_liking_reaction.sql  # separa "le gustó" de "reacción/alergia"
 │   ├── 0007_multi_tenant_households.sql # familias (multi-tenant) + RLS por familia
 │   ├── 0008_allow_service_role_profile_updates.sql # el backend puede cambiar rol/estado
-│   └── 0009_household_join_codes.sql    # código para unirse a una familia
+│   ├── 0009_household_join_codes.sql    # código para unirse a una familia
+│   └── 0010_keepalive_ping.sql          # función ping() para el keep-alive
 ├── supabase/seed_july2026.sql       # menú de ejemplo (julio 2026)
 └── src/
     ├── context/                     # AuthContext, CategoriesContext
@@ -122,6 +123,7 @@ npm run preview      # sirve el build de producción
    - `0007_multi_tenant_households.sql`
    - `0008_allow_service_role_profile_updates.sql`
    - `0009_household_join_codes.sql`
+   - `0010_keepalive_ping.sql`
    - (opcional) `supabase/seed_july2026.sql` para cargar un menú de ejemplo.
 
    (O con la CLI de Supabase: `supabase db push`.)
