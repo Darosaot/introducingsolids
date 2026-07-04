@@ -42,27 +42,36 @@ export const handler = async (event: any) => {
   }
   const callerId = userData.user.id;
 
-  // 2) Comprobar que el que llama es administrador y no está deshabilitado.
+  // 2) Comprobar permisos: dueño de una familia o super-admin de plataforma.
   const { data: callerProfile } = await admin
     .from('profiles')
-    .select('role, disabled')
+    .select('role, disabled, household_id, household_role')
     .eq('id', callerId)
     .single();
 
-  if (!callerProfile || callerProfile.role !== 'admin' || callerProfile.disabled) {
-    return json(403, { error: 'No tienes permisos de administrador.' });
+  const isSuperadmin = callerProfile?.role === 'admin';
+  const isOwner = callerProfile?.household_role === 'owner';
+  if (!callerProfile || callerProfile.disabled || (!isSuperadmin && !isOwner)) {
+    return json(403, { error: 'No tienes permisos para gestionar usuarios.' });
   }
+
+  const ctx: Ctx = {
+    admin,
+    callerId,
+    isSuperadmin,
+    householdId: callerProfile.household_id ?? null,
+  };
 
   try {
     switch (event.httpMethod) {
       case 'GET':
-        return await listUsers(admin);
+        return await listUsers(ctx);
       case 'POST':
-        return await createUser(admin, JSON.parse(event.body || '{}'));
+        return await createUser(ctx, JSON.parse(event.body || '{}'));
       case 'PATCH':
-        return await patchUser(admin, callerId, JSON.parse(event.body || '{}'));
+        return await patchUser(ctx, JSON.parse(event.body || '{}'));
       case 'DELETE':
-        return await deleteUser(admin, callerId, JSON.parse(event.body || '{}'));
+        return await deleteUser(ctx, JSON.parse(event.body || '{}'));
       default:
         return json(405, { error: 'Método no permitido.' });
     }
@@ -71,12 +80,32 @@ export const handler = async (event: any) => {
   }
 };
 
-async function listUsers(admin: any) {
-  const { data: profiles, error } = await admin
+interface Ctx {
+  admin: any;
+  callerId: string;
+  isSuperadmin: boolean;
+  householdId: string | null;
+}
+
+/** Comprueba que el usuario objetivo pertenece a la familia del que llama (o es super-admin). */
+async function assertSameHousehold(ctx: Ctx, targetId: string): Promise<void> {
+  if (ctx.isSuperadmin) return;
+  const { data } = await ctx.admin.from('profiles').select('household_id').eq('id', targetId).single();
+  if (!data || data.household_id !== ctx.householdId) {
+    throw new Error('Ese usuario no pertenece a tu familia.');
+  }
+}
+
+async function listUsers(ctx: Ctx) {
+  let query = ctx.admin
     .from('profiles')
-    .select('id, email, full_name, role, disabled, created_at')
+    .select('id, email, full_name, role, disabled, created_at, household_id, household_role')
     .order('created_at', { ascending: true });
+  // El dueño solo ve su familia; el super-admin ve a todos.
+  if (!ctx.isSuperadmin) query = query.eq('household_id', ctx.householdId);
+  const { data: profiles, error } = await query;
   if (error) throw error;
+  const admin = ctx.admin;
 
   // Enriquecer con el último acceso desde Auth.
   const { data: authList } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
@@ -93,60 +122,68 @@ async function listUsers(admin: any) {
 }
 
 async function createUser(
-  admin: any,
-  body: { email?: string; password?: string; role?: 'admin' | 'user' },
+  ctx: Ctx,
+  body: { email?: string; password?: string },
 ) {
   if (!body.email || !body.password) {
     return json(400, { error: 'Correo y contraseña son obligatorios.' });
   }
-  const { data, error } = await admin.auth.admin.createUser({
+  if (!ctx.householdId) {
+    return json(400, { error: 'No perteneces a ninguna familia.' });
+  }
+  const { data, error } = await ctx.admin.auth.admin.createUser({
     email: body.email,
     password: body.password,
     email_confirm: true,
   });
   if (error) throw error;
 
-  // El trigger crea el perfil con rol 'user'; ajusta si se pidió 'admin'.
-  if (body.role === 'admin' && data?.user) {
-    await admin.from('profiles').update({ role: 'admin' }).eq('id', data.user.id);
+  // El trigger crea el perfil sin familia; se le asigna la del que invita, como miembro.
+  if (data?.user) {
+    await ctx.admin
+      .from('profiles')
+      .update({ household_id: ctx.householdId, household_role: 'member' })
+      .eq('id', data.user.id);
   }
   return json(201, { id: data?.user?.id });
 }
 
 async function patchUser(
-  admin: any,
-  callerId: string,
+  ctx: Ctx,
   body: { id?: string; role?: 'admin' | 'user'; disabled?: boolean },
 ) {
   if (!body.id) return json(400, { error: 'Falta el identificador de usuario.' });
+  await assertSameHousehold(ctx, body.id);
 
   const patch: Record<string, unknown> = {};
-  if (body.role) patch.role = body.role;
+  // Solo el super-admin cambia el rol de plataforma; el dueño gestiona el estado.
+  if (body.role && ctx.isSuperadmin) patch.role = body.role;
 
   if (typeof body.disabled === 'boolean') {
-    if (body.id === callerId) {
+    if (body.id === ctx.callerId) {
       return json(400, { error: 'No puedes deshabilitar tu propia cuenta.' });
     }
     patch.disabled = body.disabled;
     // Banear en Auth impide iniciar sesión mientras esté deshabilitado.
-    await admin.auth.admin.updateUserById(body.id, {
+    await ctx.admin.auth.admin.updateUserById(body.id, {
       ban_duration: body.disabled ? BAN_FOREVER : 'none',
     });
   }
 
   if (Object.keys(patch).length > 0) {
-    const { error } = await admin.from('profiles').update(patch).eq('id', body.id);
+    const { error } = await ctx.admin.from('profiles').update(patch).eq('id', body.id);
     if (error) throw error;
   }
   return json(200, { ok: true });
 }
 
-async function deleteUser(admin: any, callerId: string, body: { id?: string }) {
+async function deleteUser(ctx: Ctx, body: { id?: string }) {
   if (!body.id) return json(400, { error: 'Falta el identificador de usuario.' });
-  if (body.id === callerId) {
+  if (body.id === ctx.callerId) {
     return json(400, { error: 'No puedes eliminar tu propia cuenta.' });
   }
-  const { error } = await admin.auth.admin.deleteUser(body.id);
+  await assertSameHousehold(ctx, body.id);
+  const { error } = await ctx.admin.auth.admin.deleteUser(body.id);
   if (error) throw error;
   // La fila de profiles se borra en cascada (on delete cascade).
   return json(200, { ok: true });

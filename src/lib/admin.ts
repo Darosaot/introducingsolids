@@ -39,7 +39,7 @@ export async function listUsers(): Promise<AdminUser[]> {
 export async function createUser(input: {
   email: string;
   password: string;
-  role: UserRole;
+  role?: UserRole;
 }): Promise<void> {
   const res = await fetch(FN_URL, {
     method: 'POST',

@@ -112,6 +112,13 @@ export async function updateTheme(userId: string, theme: Theme): Promise<void> {
   if (error) throw error;
 }
 
+/** Alta self-serve de familia: crea la familia del usuario y la siembra. Devuelve su id. */
+export async function createHousehold(name: string): Promise<string> {
+  const { data, error } = await supabase.rpc('create_household', { p_name: name });
+  if (error) throw error;
+  return data as string;
+}
+
 export async function fetchBabyProfile(): Promise<BabyProfile | null> {
   const { data, error } = await supabase
     .from('baby_profile')
@@ -411,7 +418,7 @@ export async function upsertDayNote(day: string, note: string, userId: string): 
     .from('day_notes')
     .upsert(
       { day, note, created_by: userId, updated_at: new Date().toISOString() },
-      { onConflict: 'day' },
+      { onConflict: 'household_id,day' },
     );
   if (error) throw error;
 }
@@ -449,7 +456,7 @@ export async function upsertFoodStatus(input: {
       updated_by: input.userId,
       updated_at: new Date().toISOString(),
     },
-    { onConflict: 'name_key' },
+    { onConflict: 'household_id,name_key' },
   );
   if (error) throw error;
 }
@@ -472,7 +479,7 @@ export async function updateFoodCategory(
     supabase.from('meal_items').update({ category_id: categoryId }).in('id', ids),
     supabase
       .from('food_status')
-      .upsert({ name_key: nameKey, display_name: nameKey, category_id: categoryId }, { onConflict: 'name_key' }),
+      .upsert({ name_key: nameKey, display_name: nameKey, category_id: categoryId }, { onConflict: 'household_id,name_key' }),
   ]);
   if (updErr) throw updErr;
   if (statusErr) throw statusErr;

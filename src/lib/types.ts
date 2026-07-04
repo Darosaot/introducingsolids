@@ -26,6 +26,8 @@ export type MealSlot =
   | 'afternoon_snack'
   | 'dinner';
 
+export type HouseholdRole = 'owner' | 'member';
+
 export interface Profile {
   id: string;
   email: string | null;
@@ -33,6 +35,15 @@ export interface Profile {
   role: UserRole;
   disabled: boolean;
   theme: Theme;
+  household_id: string | null;
+  household_role: HouseholdRole;
+  created_at: string;
+}
+
+export interface Household {
+  id: string;
+  name: string;
+  owner_id: string | null;
   created_at: string;
 }
 

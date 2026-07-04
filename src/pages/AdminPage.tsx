@@ -7,7 +7,7 @@ import { t } from '../lib/i18n';
 import type { AdminUser, UserRole } from '../lib/types';
 
 export function AdminPage() {
-  const { session } = useAuth();
+  const { session, isSuperadmin } = useAuth();
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -45,7 +45,7 @@ export function AdminPage() {
     setCreateMsg(null);
     setError(null);
     try {
-      await createUser({ email: email.trim(), password, role });
+      await createUser({ email: email.trim(), password, role: isSuperadmin ? role : undefined });
       setEmail('');
       setPassword('');
       setRole('user');
@@ -140,10 +140,12 @@ export function AdminPage() {
             minLength={6}
             onChange={(e) => setPassword(e.target.value)}
           />
-          <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-            <option value="user">{t.admin.roleUser}</option>
-            <option value="admin">{t.admin.roleAdmin}</option>
-          </select>
+          {isSuperadmin && (
+            <select value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
+              <option value="user">{t.admin.roleUser}</option>
+              <option value="admin">{t.admin.roleAdmin}</option>
+            </select>
+          )}
           <button className="primary" type="submit" disabled={creating}>
             {t.admin.create}
           </button>
@@ -191,15 +193,17 @@ export function AdminPage() {
                           : t.admin.never}
                       </td>
                       <td className="admin-actions">
-                        <button
-                          className="ghost small-btn"
-                          disabled={disabled}
-                          onClick={() =>
-                            mutate(u, { role: u.role === 'admin' ? 'user' : 'admin' })
-                          }
-                        >
-                          {u.role === 'admin' ? t.admin.makeUser : t.admin.makeAdmin}
-                        </button>
+                        {isSuperadmin && (
+                          <button
+                            className="ghost small-btn"
+                            disabled={disabled}
+                            onClick={() =>
+                              mutate(u, { role: u.role === 'admin' ? 'user' : 'admin' })
+                            }
+                          >
+                            {u.role === 'admin' ? t.admin.makeUser : t.admin.makeAdmin}
+                          </button>
+                        )}
                         <button
                           className="ghost small-btn"
                           disabled={disabled || isSelf}
