@@ -55,7 +55,8 @@ clasifica por categoría con un color personalizable.
 │   ├── 0004_food_status.sql         # reacción/estado por alimento
 │   ├── 0005_product_companion.sql   # perfil, planificación, resúmenes de alimentos
 │   ├── 0006_split_liking_reaction.sql  # separa "le gustó" de "reacción/alergia"
-│   └── 0007_multi_tenant_households.sql # familias (multi-tenant) + RLS por familia
+│   ├── 0007_multi_tenant_households.sql # familias (multi-tenant) + RLS por familia
+│   └── 0008_allow_service_role_profile_updates.sql # el backend puede cambiar rol/estado
 ├── supabase/seed_july2026.sql       # menú de ejemplo (julio 2026)
 └── src/
     ├── context/                     # AuthContext, CategoriesContext
@@ -118,6 +119,7 @@ npm run preview      # sirve el build de producción
    - `0005_product_companion.sql`
    - `0006_split_liking_reaction.sql`
    - `0007_multi_tenant_households.sql`
+   - `0008_allow_service_role_profile_updates.sql`
    - (opcional) `supabase/seed_july2026.sql` para cargar un menú de ejemplo.
 
    (O con la CLI de Supabase: `supabase db push`.)
