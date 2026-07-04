@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Comidas del Bebé">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7ba883"/>
+      <stop offset="1" stop-color="#5f8a68"/>
+    </linearGradient>
+    <radialGradient id="food" cx="0.4" cy="0.35" r="0.75">
+      <stop offset="0" stop-color="#ffc487"/>
+      <stop offset="1" stop-color="#f2a65a"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <!-- Fondo con esquinas tipo app -->
+  <rect width="512" height="512" rx="114" fill="url(#bg)"/>
+
+  <!-- Cuchara -->
+  <g filter="url(#soft)">
+    <rect x="242" y="250" width="28" height="196" rx="14" fill="#ffffff"/>
+    <ellipse cx="256" cy="250" rx="46" ry="58" fill="#ffffff"/>
+  </g>
+
+  <!-- Plato -->
+  <g filter="url(#soft)">
+    <circle cx="256" cy="222" r="150" fill="#ffffff"/>
+  </g>
+  <circle cx="256" cy="222" r="118" fill="#eef3ec"/>
+
+  <!-- Comida -->
+  <circle cx="256" cy="222" r="80" fill="url(#food)"/>
+  <circle cx="228" cy="196" r="20" fill="#ffffff" opacity="0.35"/>
+</svg>

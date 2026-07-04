@@ -329,6 +329,10 @@ select:focus {
   align-items: center;
   gap: 1rem;
   padding: 0.7rem 1.2rem;
+  /* Respeta el notch / área segura al instalar la app en iOS (viewport-fit=cover) */
+  padding-top: max(0.7rem, env(safe-area-inset-top));
+  padding-left: max(1.2rem, env(safe-area-inset-left));
+  padding-right: max(1.2rem, env(safe-area-inset-right));
   background: var(--surface);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -381,6 +385,8 @@ select:focus {
 }
 .content {
   padding: 1.2rem;
+  /* Deja hueco para el indicador de inicio de iOS en modo app instalada */
+  padding-bottom: max(1.2rem, env(safe-area-inset-bottom));
   max-width: 1200px;
   width: 100%;
   margin: 0 auto;
@@ -934,6 +940,7 @@ select:focus {
   }
   .content {
     padding: 0.8rem;
+    padding-bottom: max(0.8rem, env(safe-area-inset-bottom));
   }
   .week {
     grid-template-columns: 1fr;
