@@ -1649,6 +1649,53 @@ select:focus {
 .family-name-form .grow {
   flex: 1 1 240px;
 }
+.segmented {
+  display: flex;
+  gap: 0.25rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.2rem;
+  margin: 0.5rem 0;
+}
+.segmented button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  padding: 0.45rem 0.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.segmented button.active {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+.invite-box {
+  margin-top: 0.9rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--border);
+  border-radius: 12px;
+}
+.invite-code-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.invite-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  padding: 0.3rem 0.6rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
 .safety-badges {
   display: inline-flex;
   flex-wrap: wrap;

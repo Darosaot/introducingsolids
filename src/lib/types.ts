@@ -44,6 +44,7 @@ export interface Household {
   id: string;
   name: string;
   owner_id: string | null;
+  join_code: string;
   created_at: string;
 }
 
