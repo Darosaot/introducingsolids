@@ -1,0 +1,39 @@
+{
+  "name": "Comidas del Bebé",
+  "short_name": "Comidas",
+  "description": "El diario de sólidos de tu bebé: hierro, alérgenos y seguridad, en familia y siguiendo el enfoque BLW/BLISS.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f6f7f4",
+  "theme_color": "#6d9773",
+  "lang": "es",
+  "categories": ["health", "lifestyle", "food"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "maskable"
+    }
+  ]
+}
