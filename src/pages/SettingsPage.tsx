@@ -4,11 +4,9 @@ import { useCategories } from '../context/CategoriesContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useTheme, THEMES } from '../context/ThemeContext';
 import { useToast } from '../context/ToastContext';
-import { addCategory, deleteCategory, fetchBabyProfile, saveBabyProfile, updateCategory } from '../lib/data';
-import { formatBabyAge, formatSolidsTime } from '../lib/baby';
-import { dayKey } from '../lib/date';
+import { addCategory, deleteCategory, updateCategory } from '../lib/data';
 import { t } from '../lib/i18n';
-import type { BabyProfile, Category } from '../lib/types';
+import type { Category } from '../lib/types';
 
 const DEFAULT_COLORS: Record<string, string> = {
   protein: '#E11D48',
@@ -41,40 +39,10 @@ export function SettingsPage() {
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState('#22C55E');
   const [adding, setAdding] = useState(false);
-  const [baby, setBaby] = useState<BabyProfile | null>(null);
-  const [babyForm, setBabyForm] = useState({
-    name: 'Bebé',
-    birthDate: '',
-    solidsStartDate: '',
-  });
-  const [babyBusy, setBabyBusy] = useState(false);
-  const [babyLoading, setBabyLoading] = useState(true);
-  const todayKey = dayKey(new Date());
 
   useEffect(() => {
     setDraft(categories.map((c) => ({ ...c })));
   }, [categories]);
-
-  useEffect(() => {
-    let active = true;
-    fetchBabyProfile()
-      .then((profile) => {
-        if (!active) return;
-        setBaby(profile);
-        setBabyForm({
-          name: profile?.name ?? 'Bebé',
-          birthDate: profile?.birth_date ?? '',
-          solidsStartDate: profile?.solids_start_date ?? '',
-        });
-      })
-      .catch(() => showToast({ title: t.common.error, tone: 'error' }))
-      .finally(() => {
-        if (active) setBabyLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [showToast]);
 
   function set(id: string, patch: Partial<Category>) {
     setDraft((d) => d.map((c) => (c.id === id ? { ...c, ...patch } : c)));
@@ -99,30 +67,6 @@ export function SettingsPage() {
       showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setBusy(false);
-    }
-  }
-
-  async function saveBaby(e: React.FormEvent) {
-    e.preventDefault();
-    setBabyBusy(true);
-    try {
-      const saved = await saveBabyProfile({
-        id: baby?.id,
-        name: babyForm.name,
-        birthDate: babyForm.birthDate || null,
-        solidsStartDate: babyForm.solidsStartDate || null,
-      });
-      setBaby(saved);
-      setBabyForm({
-        name: saved.name,
-        birthDate: saved.birth_date ?? '',
-        solidsStartDate: saved.solids_start_date ?? '',
-      });
-      showToast({ title: t.baby.saved, tone: 'ok' });
-    } catch {
-      showToast({ title: t.common.error, tone: 'error' });
-    } finally {
-      setBabyBusy(false);
     }
   }
 
@@ -169,55 +113,6 @@ export function SettingsPage() {
       <header className="page-head">
         <h1>{t.settings.title}</h1>
       </header>
-
-      {/* --- Perfil del bebé --- */}
-      <section className="settings-section">
-        <h2>{t.baby.title}</h2>
-        <p className="muted">{t.baby.subtitle}</p>
-        {babyLoading ? (
-          <p className="muted">{t.common.loading}</p>
-        ) : (
-          <form className="baby-profile-form" onSubmit={saveBaby}>
-            <label>
-              {t.baby.name}
-              <input
-                type="text"
-                value={babyForm.name}
-                onChange={(e) => setBabyForm((prev) => ({ ...prev, name: e.target.value }))}
-                maxLength={60}
-              />
-            </label>
-            <label>
-              {t.baby.birthDate}
-              <input
-                type="date"
-                value={babyForm.birthDate}
-                max={todayKey}
-                onChange={(e) => setBabyForm((prev) => ({ ...prev, birthDate: e.target.value }))}
-              />
-            </label>
-            <label>
-              {t.baby.solidsStartDate}
-              <input
-                type="date"
-                value={babyForm.solidsStartDate}
-                min={babyForm.birthDate || undefined}
-                max={todayKey}
-                onChange={(e) => setBabyForm((prev) => ({ ...prev, solidsStartDate: e.target.value }))}
-              />
-            </label>
-            <button className="primary" type="submit" disabled={babyBusy || !babyForm.name.trim()}>
-              {t.baby.save}
-            </button>
-          </form>
-        )}
-        {(babyForm.birthDate || babyForm.solidsStartDate) && (
-          <div className="profile-preview">
-            {babyForm.birthDate && <span>{formatBabyAge(babyForm.birthDate) ?? t.baby.ageUnavailable}</span>}
-            {babyForm.solidsStartDate && <span>{formatSolidsTime(babyForm.solidsStartDate)}</span>}
-          </div>
-        )}
-      </section>
 
       {/* --- Apariencia --- */}
       <section className="settings-section">

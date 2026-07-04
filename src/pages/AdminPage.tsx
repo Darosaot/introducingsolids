@@ -3,17 +3,32 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useToast } from '../context/ToastContext';
 import { createUser, deleteUser, listUsers, updateUser } from '../lib/admin';
+import { fetchBabyProfile, fetchHousehold, renameHousehold, saveBabyProfile } from '../lib/data';
+import { formatBabyAge, formatSolidsTime } from '../lib/baby';
+import { dayKey } from '../lib/date';
 import { t } from '../lib/i18n';
-import type { AdminUser, UserRole } from '../lib/types';
+import type { AdminUser, BabyProfile, UserRole } from '../lib/types';
 
 export function AdminPage() {
-  const { session, isSuperadmin } = useAuth();
+  const { session, isSuperadmin, isOwner, householdId } = useAuth();
   const { confirm } = useConfirm();
   const { showToast } = useToast();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Nombre de la familia
+  const [familyName, setFamilyName] = useState('');
+  const [familyDraft, setFamilyDraft] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const canEditFamily = isOwner || isSuperadmin;
+
+  // Perfil del bebé
+  const [baby, setBaby] = useState<BabyProfile | null>(null);
+  const [babyForm, setBabyForm] = useState({ name: 'Bebé', birthDate: '', solidsStartDate: '' });
+  const [babyBusy, setBabyBusy] = useState(false);
+  const todayKey = dayKey(new Date());
 
   // Formulario de alta
   const [email, setEmail] = useState('');
@@ -26,11 +41,68 @@ export function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      setUsers(await listUsers());
+      const [userRows, household, babyRow] = await Promise.all([
+        listUsers(),
+        householdId ? fetchHousehold(householdId).catch(() => null) : Promise.resolve(null),
+        fetchBabyProfile().catch(() => null),
+      ]);
+      setUsers(userRows);
+      setFamilyName(household?.name ?? '');
+      setFamilyDraft(household?.name ?? '');
+      setBaby(babyRow);
+      setBabyForm({
+        name: babyRow?.name ?? 'Bebé',
+        birthDate: babyRow?.birth_date ?? '',
+        solidsStartDate: babyRow?.solids_start_date ?? '',
+      });
     } catch (e) {
       setError(e instanceof Error ? e.message : t.admin.loadError);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveBaby(e: React.FormEvent) {
+    e.preventDefault();
+    setBabyBusy(true);
+    setError(null);
+    try {
+      const saved = await saveBabyProfile({
+        id: baby?.id,
+        name: babyForm.name,
+        birthDate: babyForm.birthDate || null,
+        solidsStartDate: babyForm.solidsStartDate || null,
+      });
+      setBaby(saved);
+      setBabyForm({
+        name: saved.name,
+        birthDate: saved.birth_date ?? '',
+        solidsStartDate: saved.solids_start_date ?? '',
+      });
+      showToast({ title: t.baby.saved, tone: 'ok' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
+    } finally {
+      setBabyBusy(false);
+    }
+  }
+
+  async function saveFamilyName(e: React.FormEvent) {
+    e.preventDefault();
+    if (!householdId || !familyDraft.trim() || familyDraft.trim() === familyName) return;
+    setSavingName(true);
+    setError(null);
+    try {
+      const updated = await renameHousehold(householdId, familyDraft);
+      setFamilyName(updated.name);
+      setFamilyDraft(updated.name);
+      showToast({ title: t.family.saved, tone: 'ok' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
+    } finally {
+      setSavingName(false);
     }
   }
 
@@ -122,8 +194,80 @@ export function AdminPage() {
 
       {error && <div className="banner error">{error}</div>}
 
+      <section className="settings-section">
+        <h2>{t.family.sectionTitle}</h2>
+        <form className="family-name-form" onSubmit={saveFamilyName}>
+          <label className="grow">
+            {t.family.nameLabel}
+            <input
+              type="text"
+              value={familyDraft}
+              maxLength={60}
+              disabled={!canEditFamily}
+              onChange={(e) => setFamilyDraft(e.target.value)}
+            />
+          </label>
+          {canEditFamily ? (
+            <button
+              className="primary"
+              type="submit"
+              disabled={savingName || !familyDraft.trim() || familyDraft.trim() === familyName}
+            >
+              {t.family.save}
+            </button>
+          ) : (
+            <p className="muted small">{t.family.ownerOnly}</p>
+          )}
+        </form>
+      </section>
+
+      <section className="settings-section">
+        <h2>{t.baby.title}</h2>
+        <p className="muted">{t.baby.subtitle}</p>
+        <form className="baby-profile-form" onSubmit={saveBaby}>
+          <label>
+            {t.baby.name}
+            <input
+              type="text"
+              value={babyForm.name}
+              maxLength={60}
+              onChange={(e) => setBabyForm((prev) => ({ ...prev, name: e.target.value }))}
+            />
+          </label>
+          <label>
+            {t.baby.birthDate}
+            <input
+              type="date"
+              value={babyForm.birthDate}
+              max={todayKey}
+              onChange={(e) => setBabyForm((prev) => ({ ...prev, birthDate: e.target.value }))}
+            />
+          </label>
+          <label>
+            {t.baby.solidsStartDate}
+            <input
+              type="date"
+              value={babyForm.solidsStartDate}
+              min={babyForm.birthDate || undefined}
+              max={todayKey}
+              onChange={(e) => setBabyForm((prev) => ({ ...prev, solidsStartDate: e.target.value }))}
+            />
+          </label>
+          <button className="primary" type="submit" disabled={babyBusy || !babyForm.name.trim()}>
+            {t.baby.save}
+          </button>
+        </form>
+        {(babyForm.birthDate || babyForm.solidsStartDate) && (
+          <div className="profile-preview">
+            {babyForm.birthDate && <span>{formatBabyAge(babyForm.birthDate) ?? t.baby.ageUnavailable}</span>}
+            {babyForm.solidsStartDate && <span>{formatSolidsTime(babyForm.solidsStartDate)}</span>}
+          </div>
+        )}
+      </section>
+
       <section className="admin-create">
-        <h2>{t.admin.createUser}</h2>
+        <h2>{t.family.addTitle}</h2>
+        <p className="muted">{t.family.addHint}</p>
         <form className="admin-create-form" onSubmit={handleCreate}>
           <input
             type="email"
@@ -154,6 +298,7 @@ export function AdminPage() {
       </section>
 
       <section>
+        <h2>{t.family.membersTitle}</h2>
         {loading ? (
           <p className="muted">{t.common.loading}</p>
         ) : (
@@ -162,7 +307,8 @@ export function AdminPage() {
               <thead>
                 <tr>
                   <th>{t.admin.email}</th>
-                  <th>{t.admin.role}</th>
+                  <th>{t.family.sectionTitle}</th>
+                  {isSuperadmin && <th>{t.admin.role}</th>}
                   <th>{t.admin.status}</th>
                   <th>{t.admin.lastSignIn}</th>
                   <th>{t.admin.actions}</th>
@@ -178,10 +324,17 @@ export function AdminPage() {
                         {u.email} {isSelf && <span className="muted small">{t.admin.you}</span>}
                       </td>
                       <td>
-                        <span className={`badge role-${u.role}`}>
-                          {u.role === 'admin' ? t.admin.roleAdmin : t.admin.roleUser}
+                        <span className={`badge role-${u.household_role === 'owner' ? 'admin' : 'user'}`}>
+                          {u.household_role === 'owner' ? t.family.ownerBadge : t.family.memberBadge}
                         </span>
                       </td>
+                      {isSuperadmin && (
+                        <td>
+                          <span className={`badge role-${u.role}`}>
+                            {u.role === 'admin' ? t.admin.roleAdmin : t.admin.roleUser}
+                          </span>
+                        </td>
+                      )}
                       <td>
                         <span className={`badge ${u.disabled ? 'st-off' : 'st-on'}`}>
                           {u.disabled ? t.admin.disabled : t.admin.active}

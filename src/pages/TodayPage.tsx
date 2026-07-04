@@ -35,6 +35,7 @@ import type { AllergenKey, BabyProfile, Category, DashboardSummary, FoodTried, M
 
 export function TodayPage() {
   const { categories } = useCategories();
+  const { isAdmin } = useAuth();
   const [today] = useState(() => new Date());
   const todayKey = dayKey(today);
   const quickInputRef = useRef<HTMLInputElement>(null);
@@ -126,7 +127,7 @@ export function TodayPage() {
         <p className="muted">{t.common.loading}</p>
       ) : (
         <>
-          {needsBabyProfileSetup(profile) && <BabySetupNudge />}
+          {needsBabyProfileSetup(profile) && isAdmin && <BabySetupNudge />}
           <QuickAddMeal todayKey={todayKey} foods={introducedFoods} todayMeals={meals} ageMonths={ageMonths} inputRef={quickInputRef} onSaved={load} />
 
           <section className="today-grid">
@@ -476,7 +477,7 @@ function BabySetupNudge() {
         <h2>{t.baby.setupTitle}</h2>
         <p>{t.baby.setupBody}</p>
       </div>
-      <Link className="primary-link" to="/ajustes">
+      <Link className="primary-link" to="/admin">
         {t.baby.setupAction}
       </Link>
     </section>

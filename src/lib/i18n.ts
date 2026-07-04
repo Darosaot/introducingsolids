@@ -160,7 +160,7 @@ export const t = {
     ageUnavailable: 'Edad no disponible',
     setupTitle: 'Completa el perfil del bebé',
     setupBody: 'Añade fecha de nacimiento e inicio de sólidos para ver edad, semanas con AC y mejores recordatorios.',
-    setupAction: 'Completar en ajustes',
+    setupAction: 'Completar en Administración',
   },
 
   // Página "Alimentos probados"
@@ -253,11 +253,25 @@ export const t = {
     delete: 'Eliminar',
   },
 
+  // Familia (gestión desde Administración)
+  family: {
+    sectionTitle: 'Familia',
+    nameLabel: 'Nombre de la familia',
+    save: 'Guardar nombre',
+    saved: 'Nombre de la familia actualizado',
+    ownerOnly: 'Solo el dueño de la familia puede cambiar el nombre.',
+    membersTitle: 'Miembros de la familia',
+    addTitle: 'Añadir miembro',
+    addHint: 'Crea la cuenta de otro cuidador; entrará directamente a este mismo diario.',
+    ownerBadge: 'Dueño',
+    memberBadge: 'Miembro',
+  },
+
   // Administración
   admin: {
-    title: 'Administración de usuarios',
-    subtitle: 'Ver, crear, editar, deshabilitar o eliminar usuarios.',
-    createUser: 'Crear usuario',
+    title: 'Gestión de la familia',
+    subtitle: 'Renombra tu familia y gestiona quién puede ver y editar el diario.',
+    createUser: 'Añadir miembro',
     email: 'Correo',
     password: 'Contraseña',
     role: 'Rol',

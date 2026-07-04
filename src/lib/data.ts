@@ -10,6 +10,7 @@ import type {
   FoodFilters,
   FoodStatus,
   FoodTried,
+  Household,
   Liking,
   MealItem,
   MealSlot,
@@ -117,6 +118,24 @@ export async function createHousehold(name: string): Promise<string> {
   const { data, error } = await supabase.rpc('create_household', { p_name: name });
   if (error) throw error;
   return data as string;
+}
+
+export async function fetchHousehold(id: string): Promise<Household | null> {
+  const { data, error } = await supabase.from('households').select('*').eq('id', id).maybeSingle();
+  if (error) throw error;
+  return (data as Household) ?? null;
+}
+
+/** Renombra la familia. La RLS solo lo permite al dueño (o super-admin). */
+export async function renameHousehold(id: string, name: string): Promise<Household> {
+  const { data, error } = await supabase
+    .from('households')
+    .update({ name: name.trim() || 'Mi familia' })
+    .eq('id', id)
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data as Household;
 }
 
 export async function fetchBabyProfile(): Promise<BabyProfile | null> {

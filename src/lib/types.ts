@@ -174,6 +174,8 @@ export interface AdminUser {
   full_name: string | null;
   role: UserRole;
   disabled: boolean;
+  household_id: string | null;
+  household_role: HouseholdRole;
   created_at: string;
   last_sign_in_at: string | null;
 }
