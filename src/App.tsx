@@ -13,6 +13,7 @@ import { PlannerPage } from './pages/PlannerPage';
 import { TodayPage } from './pages/TodayPage';
 import { AdminPage } from './pages/AdminPage';
 import { LoginPage } from './pages/LoginPage';
+import { OnboardingPage } from './pages/OnboardingPage';
 import { t } from './lib/i18n';
 
 function RequireAdmin({ children }: { children: JSX.Element }) {
@@ -21,7 +22,7 @@ function RequireAdmin({ children }: { children: JSX.Element }) {
 }
 
 function AppContent() {
-  const { session, loading } = useAuth();
+  const { session, loading, needsHousehold } = useAuth();
 
   if (loading) {
     return (
@@ -33,6 +34,10 @@ function AppContent() {
 
   if (!session) {
     return <LoginPage />;
+  }
+
+  if (needsHousehold) {
+    return <OnboardingPage />;
   }
 
   return (

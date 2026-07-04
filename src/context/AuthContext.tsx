@@ -9,6 +9,7 @@ import {
 import type { Session } from '@supabase/supabase-js';
 import { supabase, supabaseConfigured } from '../lib/supabase';
 import { t } from '../lib/i18n';
+import { canManageMembers, needsHouseholdSetup } from '../lib/tenant';
 import type { Profile } from '../lib/types';
 
 interface AuthState {
@@ -17,6 +18,11 @@ interface AuthState {
   loading: boolean;
   configured: boolean;
   isAdmin: boolean;
+  isOwner: boolean;
+  isSuperadmin: boolean;
+  needsHousehold: boolean;
+  householdId: string | null;
+  refreshProfile: () => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -116,12 +122,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    if (!session) return;
+    const p = await loadProfile(session.user.id);
+    setProfile(p);
+  }, [session, loadProfile]);
+
   const value: AuthState = {
     session,
     profile,
     loading,
     configured: supabaseConfigured,
-    isAdmin: profile?.role === 'admin',
+    isSuperadmin: profile?.role === 'admin',
+    isOwner: profile?.household_role === 'owner',
+    isAdmin: canManageMembers(profile),
+    needsHousehold: needsHouseholdSetup(profile),
+    householdId: profile?.household_id ?? null,
+    refreshProfile,
     signIn,
     signUp,
     signOut,

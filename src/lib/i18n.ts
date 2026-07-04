@@ -16,6 +16,16 @@ export const t = {
     signOut: 'Cerrar sesión',
   },
 
+  // Onboarding (crear familia)
+  onboarding: {
+    title: 'Crea tu familia',
+    subtitle: 'Tu familia es un espacio privado. Podrás invitar a otros cuidadores desde Administración.',
+    nameLabel: 'Nombre de la familia',
+    namePlaceholder: 'Ej. Familia Pérez',
+    create: 'Crear familia',
+    creating: 'Creando…',
+  },
+
   // Autenticación
   auth: {
     signInTitle: 'Iniciar sesión',
