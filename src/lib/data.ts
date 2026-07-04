@@ -120,6 +120,20 @@ export async function createHousehold(name: string): Promise<string> {
   return data as string;
 }
 
+/** Une al usuario (sin familia) a una familia existente con su código. */
+export async function joinHousehold(code: string): Promise<string> {
+  const { data, error } = await supabase.rpc('join_household', { p_code: code });
+  if (error) throw error;
+  return data as string;
+}
+
+/** Regenera el código de la familia (solo el dueño). Devuelve el nuevo código. */
+export async function regenerateJoinCode(): Promise<string> {
+  const { data, error } = await supabase.rpc('regenerate_join_code');
+  if (error) throw error;
+  return data as string;
+}
+
 export async function fetchHousehold(id: string): Promise<Household | null> {
   const { data, error } = await supabase.from('households').select('*').eq('id', id).maybeSingle();
   if (error) throw error;

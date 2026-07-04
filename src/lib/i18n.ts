@@ -16,14 +16,20 @@ export const t = {
     signOut: 'Cerrar sesión',
   },
 
-  // Onboarding (crear familia)
+  // Onboarding (crear o unirse a una familia)
   onboarding: {
-    title: 'Crea tu familia',
-    subtitle: 'Tu familia es un espacio privado. Podrás invitar a otros cuidadores desde Administración.',
+    title: 'Empieza',
+    subtitle: 'Crea la familia de tu bebé. Es un espacio privado; podrás invitar a otros cuidadores después.',
+    createTab: 'Crear familia',
+    joinTab: 'Unirme con código',
+    joinSubtitle: 'Introduce el código que te ha compartido el administrador de la familia.',
     nameLabel: 'Nombre de la familia',
     namePlaceholder: 'Ej. Familia Pérez',
+    codeLabel: 'Código de la familia',
+    codePlaceholder: 'Ej. Q2DGWR5D',
     create: 'Crear familia',
-    creating: 'Creando…',
+    join: 'Unirme a la familia',
+    working: 'Un momento…',
   },
 
   // Autenticación
@@ -262,9 +268,18 @@ export const t = {
     ownerOnly: 'Solo el dueño de la familia puede cambiar el nombre.',
     membersTitle: 'Miembros de la familia',
     addTitle: 'Añadir miembro',
-    addHint: 'Crea la cuenta de otro cuidador; entrará directamente a este mismo diario.',
+    addHint: 'Crea la cuenta de otro cuidador; entrará directamente a este mismo diario. También puedes compartir el código o el enlace de abajo para que se una al registrarse.',
     ownerBadge: 'Dueño',
     memberBadge: 'Miembro',
+    inviteTitle: 'Invitar con código',
+    inviteHint: 'Comparte este código o el enlace; al registrarse, la persona podrá unirse a esta familia.',
+    copyCode: 'Copiar código',
+    copyLink: 'Copiar enlace',
+    regenerate: 'Regenerar',
+    regenerateConfirm: 'El código actual dejará de funcionar y se generará uno nuevo. ¿Continuar?',
+    codeCopied: 'Código copiado',
+    linkCopied: 'Enlace copiado',
+    codeRegenerated: 'Código regenerado',
   },
 
   // Administración

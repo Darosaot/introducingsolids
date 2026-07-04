@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useConfirm } from '../context/ConfirmContext';
 import { useToast } from '../context/ToastContext';
 import { createUser, deleteUser, listUsers, updateUser } from '../lib/admin';
-import { fetchBabyProfile, fetchHousehold, renameHousehold, saveBabyProfile } from '../lib/data';
+import { fetchBabyProfile, fetchHousehold, regenerateJoinCode, renameHousehold, saveBabyProfile } from '../lib/data';
 import { formatBabyAge, formatSolidsTime } from '../lib/baby';
 import { dayKey } from '../lib/date';
 import { t } from '../lib/i18n';
@@ -18,11 +18,16 @@ export function AdminPage() {
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // Nombre de la familia
+  // Nombre y código de la familia
   const [familyName, setFamilyName] = useState('');
   const [familyDraft, setFamilyDraft] = useState('');
   const [savingName, setSavingName] = useState(false);
+  const [joinCode, setJoinCode] = useState('');
+  const [regenerating, setRegenerating] = useState(false);
   const canEditFamily = isOwner || isSuperadmin;
+  const inviteLink = joinCode
+    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/?codigo=${joinCode}`
+    : '';
 
   // Perfil del bebé
   const [baby, setBaby] = useState<BabyProfile | null>(null);
@@ -49,6 +54,7 @@ export function AdminPage() {
       setUsers(userRows);
       setFamilyName(household?.name ?? '');
       setFamilyDraft(household?.name ?? '');
+      setJoinCode(household?.join_code ?? '');
       setBaby(babyRow);
       setBabyForm({
         name: babyRow?.name ?? 'Bebé',
@@ -103,6 +109,38 @@ export function AdminPage() {
       showToast({ title: t.common.error, tone: 'error' });
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function copyText(text: string, okMsg: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast({ title: okMsg, tone: 'ok' });
+    } catch {
+      showToast({ title: text, tone: 'ok' });
+    }
+  }
+
+  async function regenerate() {
+    const ok = await confirm({
+      title: t.family.regenerate,
+      body: t.family.regenerateConfirm,
+      choices: [
+        { value: 'confirm', label: t.family.regenerate, variant: 'primary' },
+        { value: 'cancel', label: t.confirm.cancel, variant: 'ghost' },
+      ],
+    });
+    if (!ok) return;
+    setRegenerating(true);
+    setError(null);
+    try {
+      setJoinCode(await regenerateJoinCode());
+      showToast({ title: t.family.codeRegenerated, tone: 'ok' });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t.common.error);
+      showToast({ title: t.common.error, tone: 'error' });
+    } finally {
+      setRegenerating(false);
     }
   }
 
@@ -219,6 +257,27 @@ export function AdminPage() {
             <p className="muted small">{t.family.ownerOnly}</p>
           )}
         </form>
+
+        <div className="invite-box">
+          <div>
+            <strong>{t.family.inviteTitle}</strong>
+            <p className="muted small">{t.family.inviteHint}</p>
+          </div>
+          <div className="invite-code-row">
+            <code className="invite-code">{joinCode || '—'}</code>
+            <button className="ghost small-btn" type="button" onClick={() => copyText(joinCode, t.family.codeCopied)}>
+              {t.family.copyCode}
+            </button>
+            <button className="ghost small-btn" type="button" onClick={() => copyText(inviteLink, t.family.linkCopied)}>
+              {t.family.copyLink}
+            </button>
+            {canEditFamily && (
+              <button className="ghost small-btn" type="button" onClick={() => void regenerate()} disabled={regenerating}>
+                {t.family.regenerate}
+              </button>
+            )}
+          </div>
+        </div>
       </section>
 
       <section className="settings-section">
