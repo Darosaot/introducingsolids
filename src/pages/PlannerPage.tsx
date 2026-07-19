@@ -9,7 +9,10 @@ import {
   deletePlannedMeal,
   fetchFoodsTried,
   fetchPlannedMealsInRange,
+  isRecentlyIntroduced,
 } from '../lib/data';
+import { hasTriedFood } from '../lib/catalog';
+import { FoodPicker } from '../components/FoodPicker';
 import { dayKey, fmt, weekDays } from '../lib/date';
 import { MEAL_SLOTS, TEXTURES, t } from '../lib/i18n';
 import type { FoodTried, MealSlot, PlannedMeal, Texture } from '../lib/types';
@@ -29,7 +32,6 @@ export function PlannerPage() {
     name: '',
     categoryId: '',
     texture: '' as Texture | '',
-    isNew: false,
   });
 
   const load = useCallback(async () => {
@@ -55,9 +57,10 @@ export function PlannerPage() {
       name: form.name.trim(),
       categoryId: form.categoryId || categories[0]?.id || null,
       texture: form.texture || null,
-      isNew: form.isNew,
+      // Detección automática: es nuevo si aún no se ha registrado nunca.
+      isNew: !hasTriedFood(foods, form.name),
     });
-    setForm((prev) => ({ ...prev, name: '', isNew: false }));
+    setForm((prev) => ({ ...prev, name: '' }));
     showToast({ title: t.meals.planned, tone: 'ok' });
     await load();
   }
@@ -85,8 +88,12 @@ export function PlannerPage() {
     );
   }, [planned]);
 
+  const todayKey = dayKey(new Date());
   const retryFoods = foods.filter((food) => food.liking === 'disliked' || (!food.liking && food.count <= 2)).slice(0, 5);
-  const newIdeas = foods.filter((food) => food.isNew).slice(0, 5);
+  const newIdeas = foods
+    .filter((food) => isRecentlyIntroduced(food, todayKey))
+    .sort((a, b) => b.firstDay.localeCompare(a.firstDay))
+    .slice(0, 5);
 
   return (
     <div className="page planner-page">
@@ -107,10 +114,19 @@ export function PlannerPage() {
             <option key={slot} value={slot}>{t.slots[slot]}</option>
           ))}
         </select>
-        <input
+        <FoodPicker
           value={form.name}
-          onChange={(e) => setForm({ ...form, name: e.target.value })}
+          onChange={(name) => setForm((prev) => ({ ...prev, name }))}
+          onPick={(option) => {
+            setForm((prev) => ({
+              ...prev,
+              name: option.name,
+              categoryId: option.categoryId ?? prev.categoryId,
+            }));
+          }}
+          foods={foods}
           placeholder={t.meals.foodName}
+          ariaLabel={t.meals.foodName}
         />
         <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })}>
           <option value="">{t.meals.category}</option>
@@ -124,14 +140,6 @@ export function PlannerPage() {
             <option value={texture} key={texture}>{t.textures[texture].label}</option>
           ))}
         </select>
-        <label className="new-check">
-          <input
-            type="checkbox"
-            checked={form.isNew}
-            onChange={(e) => setForm({ ...form, isNew: e.target.checked })}
-          />
-          {t.meals.isNewShort}
-        </label>
         <button className="primary" type="submit" disabled={!form.name.trim()}>
           {t.planner.add}
         </button>
@@ -174,7 +182,7 @@ export function PlannerPage() {
       <section className="insight-grid">
         <SideList title={t.planner.shopping} items={shoppingList} empty="La lista aparecerá con alimentos planificados." />
         <SideList title={t.planner.retry} items={retryFoods.map((food) => food.name)} empty={t.today.noSuggestions} />
-        <SideList title={t.planner.newThisWeek} items={newIdeas.map((food) => food.name)} empty="Marca alimentos como nuevos para ver ideas." />
+        <SideList title={t.planner.newThisWeek} items={newIdeas.map((food) => food.name)} empty="Cuando registres alimentos por primera vez aparecerán aquí." />
       </section>
     </div>
   );

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { DayModal } from '../components/DayModal';
 import { CategoryDot } from '../components/CategoryDot';
+import { FoodPicker } from '../components/FoodPicker';
+import { buildFoodOptions, exactFoodOption } from '../lib/catalog';
 import { useAuth } from '../context/AuthContext';
 import { useCategories } from '../context/CategoriesContext';
 import { useToast } from '../context/ToastContext';
@@ -271,10 +273,10 @@ function QuickAddMeal({
   const { categories } = useCategories();
   const { showToast } = useToast();
   const suggestions = useMemo(() => buildQuickSuggestions(foods, categories), [foods, categories]);
+  const foodOptions = useMemo(() => buildFoodOptions(foods, categories), [foods, categories]);
   const [name, setName] = useState('');
   const [slot, setSlot] = useState<MealSlot>('lunch');
   const [categoryId, setCategoryId] = useState('');
-  const [isNew, setIsNew] = useState(true);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -282,7 +284,7 @@ function QuickAddMeal({
   }, [categories, categoryId]);
 
   const normalizedName = foodNameKey(name);
-  const exactSuggestion = suggestions.find((suggestion) => foodNameKey(suggestion.name) === normalizedName);
+  const exactOption = exactFoodOption(foodOptions, name);
   const alreadyTried = foods.some((food) => food.nameKey === normalizedName);
   const allergenKeys = useMemo(() => inferAllergenKeys(name), [name]);
   const safetyWarnings = useMemo(() => foodSafetyWarnings(name, ageMonths), [name, ageMonths]);
@@ -317,14 +319,13 @@ function QuickAddMeal({
     const today = fromKey(todayKey);
     return foods.find((food) => {
       const ageDays = Math.floor((today.getTime() - fromKey(food.firstDay).getTime()) / 86_400_000);
-      return food.isNew && food.nameKey !== normalizedName && ageDays >= 0 && ageDays < 3;
+      return food.nameKey !== normalizedName && ageDays >= 0 && ageDays < 3;
     }) ?? null;
   }, [foods, normalizedName, todayKey]);
 
   function applySuggestion(suggestion: QuickSuggestion) {
     setName(suggestion.name);
     if (suggestion.categoryId) setCategoryId(suggestion.categoryId);
-    setIsNew(!suggestion.tried);
   }
 
   async function save(e: React.FormEvent) {
@@ -333,14 +334,15 @@ function QuickAddMeal({
     if (!session || !trimmed) return;
     setBusy(true);
     try {
-      const effectiveCategory = categoryId || exactSuggestion?.categoryId || categories[0]?.id || null;
+      const effectiveCategory = categoryId || exactOption?.categoryId || categories[0]?.id || null;
       const created = await addMeal({
         userId: session.user.id,
         day: todayKey,
         slot,
         name: trimmed,
         categoryId: effectiveCategory,
-        isNew: !alreadyTried && isNew,
+        // Detección automática de alimento nuevo (el servidor lo recalcula).
+        isNew: !alreadyTried,
       });
       if (!alreadyTried && allergenKeys.length > 0) {
         await upsertFoodStatus({
@@ -355,7 +357,6 @@ function QuickAddMeal({
         });
       }
       setName('');
-      setIsNew(true);
       showToast({
         title: t.today.quickAdded,
         tone: 'ok',
@@ -384,26 +385,21 @@ function QuickAddMeal({
       </div>
       <form className="quick-add-form" onSubmit={save}>
         <div className="quick-name-field">
-          <input
-            ref={inputRef}
+          <FoodPicker
             value={name}
-            onChange={(e) => {
-              const next = e.target.value;
-              const match = suggestions.find((suggestion) => foodNameKey(suggestion.name) === foodNameKey(next));
+            onChange={(next) => {
               setName(next);
+              const match = exactFoodOption(foodOptions, next);
               if (match?.categoryId) setCategoryId(match.categoryId);
-              if (match) setIsNew(!match.tried);
             }}
-            list="quick-food-suggestions"
+            onPick={(option) => {
+              if (option.categoryId) setCategoryId(option.categoryId);
+            }}
+            foods={foods}
+            inputRef={inputRef}
             placeholder={t.today.quickAddPlaceholder}
-            maxLength={120}
-            aria-label={t.meals.foodName}
+            ariaLabel={t.meals.foodName}
           />
-          <datalist id="quick-food-suggestions">
-            {suggestions.slice(0, 40).map((suggestion) => (
-              <option key={suggestion.name} value={suggestion.name} />
-            ))}
-          </datalist>
         </div>
         <select value={slot} onChange={(e) => setSlot(e.target.value as MealSlot)} aria-label="Franja">
           {MEAL_SLOTS.map((mealSlot) => (
@@ -419,15 +415,6 @@ function QuickAddMeal({
             </option>
           ))}
         </select>
-        <label className="new-check quick-new-check">
-          <input
-            type="checkbox"
-            checked={!alreadyTried && isNew}
-            disabled={alreadyTried}
-            onChange={(e) => setIsNew(e.target.checked)}
-          />
-          {t.meals.isNewShort}
-        </label>
         <button className="primary" type="submit" disabled={busy || !name.trim()}>
           {t.meals.add}
         </button>

@@ -9,7 +9,7 @@ import {
   WeekView,
   YearView,
 } from '../components/CalendarViews';
-import { copyWeek, fetchMealsInRange, previewCopyWeek, type CopyMode } from '../lib/data';
+import { copyWeek, fetchFoodsTried, fetchMealsInRange, previewCopyWeek, type CopyMode } from '../lib/data';
 import {
   addDays,
   addMonths,
@@ -24,7 +24,7 @@ import {
 } from '../lib/date';
 import { t } from '../lib/i18n';
 import { useAuth } from '../context/AuthContext';
-import type { MealItem } from '../lib/types';
+import type { FoodTried, MealItem } from '../lib/types';
 
 type View = 'day' | 'week' | 'month' | 'year';
 
@@ -66,6 +66,7 @@ export function CalendarPage() {
   const [view, setView] = useState<View>('month');
   const [cursor, setCursor] = useState<Date>(new Date());
   const [meals, setMeals] = useState<MealItem[]>([]);
+  const [foods, setFoods] = useState<FoodTried[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [copyWeekTo, setCopyWeekTo] = useState('');
@@ -76,8 +77,12 @@ export function CalendarPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await fetchMealsInRange(from, to);
+      const [data, foodRows] = await Promise.all([
+        fetchMealsInRange(from, to),
+        fetchFoodsTried().catch(() => [] as FoodTried[]),
+      ]);
       setMeals(data);
+      setFoods(foodRows);
     } catch (e) {
       console.error('Error cargando comidas:', e);
     } finally {
@@ -229,6 +234,7 @@ export function CalendarPage() {
         <DayModal
           day={selectedDay}
           meals={meals}
+          foodSuggestions={foods}
           onClose={() => setSelectedDay(null)}
           onChanged={load}
         />
