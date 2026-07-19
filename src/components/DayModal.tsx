@@ -8,18 +8,18 @@ import {
   copyDay,
   deleteMeal,
   fetchDayNote,
-  foodNameKey,
-  GUIDE_FOOD_IDEAS,
   previewCopyDay,
   updateMeal,
   upsertDayNote,
   upsertFoodStatus,
   type CopyMode,
 } from '../lib/data';
+import { hasTriedFood } from '../lib/catalog';
 import { dayKey, fmt } from '../lib/date';
 import { LIKING_OPTIONS, MEAL_SLOTS, REACTION_OPTIONS, TEXTURES, t } from '../lib/i18n';
 import type { FoodTried, Liking, MealItem, MealSlot, ReactionStatus, Texture } from '../lib/types';
 import { CategoryDot } from './CategoryDot';
+import { FoodPicker } from './FoodPicker';
 
 interface Props {
   day: Date;
@@ -42,17 +42,6 @@ export function DayModal({ day, meals, foodSuggestions = [], onClose, onChanged 
 
   const key = dayKey(day);
   const dayItems = useMemo(() => meals.filter((m) => m.day === key), [meals, key]);
-  const suggestions = useMemo(() => {
-    const names = new Map<string, string>();
-    for (const food of foodSuggestions) {
-      if (food.name.trim()) names.set(food.nameKey, food.name.trim());
-    }
-    for (const meal of meals) {
-      if (meal.name.trim()) names.set(meal.name_key || foodNameKey(meal.name), meal.name.trim());
-    }
-    for (const idea of GUIDE_FOOD_IDEAS) names.set(foodNameKey(idea.name), idea.name);
-    return Array.from(names.values()).slice(0, 12);
-  }, [foodSuggestions, meals]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -226,7 +215,7 @@ export function DayModal({ day, meals, foodSuggestions = [], onClose, onChanged 
             day={day}
             slot={addingSlot ?? editing?.slot ?? 'breakfast'}
             item={editing}
-            suggestions={suggestions}
+            foods={foodSuggestions}
             onClose={() => {
               setAddingSlot(null);
               setEditing(null);
@@ -316,14 +305,14 @@ function AddFoodSheet({
   day,
   slot,
   item,
-  suggestions,
+  foods,
   onClose,
   onSaved,
 }: {
   day: Date;
   slot: MealSlot;
   item: MealItem | null;
-  suggestions: string[];
+  foods: FoodTried[];
   onClose: () => void;
   onSaved: (created: MealItem | null) => void;
 }) {
@@ -333,7 +322,6 @@ function AddFoodSheet({
   const [slotValue, setSlotValue] = useState<MealSlot>(item?.slot ?? slot);
   const [categoryId, setCategoryId] = useState(item?.category_id ?? categories[0]?.id ?? '');
   const [texture, setTexture] = useState<Texture | null>(item?.texture ?? null);
-  const [isNew, setIsNew] = useState(item?.is_new ?? false);
   const [liking, setLiking] = useState<Liking | null>(item?.liking ?? null);
   const [reaction, setReaction] = useState<ReactionStatus | null>(item?.reaction ?? null);
   const [notes, setNotes] = useState(item?.notes ?? '');
@@ -350,7 +338,6 @@ function AddFoodSheet({
           slot: slotValue,
           category_id: categoryId || null,
           texture,
-          is_new: isNew,
           liking,
           reaction,
           notes: notes.trim() || null,
@@ -372,7 +359,9 @@ function AddFoodSheet({
           name: name.trim(),
           categoryId: categoryId || null,
           texture,
-          isNew,
+          // Detección automática: es "nuevo" si nunca se ha registrado antes.
+          // El servidor lo recalcula igualmente al insertar.
+          isNew: !hasTriedFood(foods, name),
           liking,
           reaction,
           notes: notes.trim() || null,
@@ -402,17 +391,18 @@ function AddFoodSheet({
           </button>
         </header>
 
-        <div className="suggestion-row">
-          {suggestions.slice(0, 8).map((suggestion) => (
-            <button key={suggestion} type="button" className="food-suggestion" onClick={() => setName(suggestion)}>
-              {suggestion}
-            </button>
-          ))}
-        </div>
-
         <label>
           {t.meals.foodName}
-          <input value={name} onChange={(e) => setName(e.target.value)} autoFocus maxLength={120} />
+          <FoodPicker
+            value={name}
+            onChange={setName}
+            onPick={(option) => {
+              if (option.categoryId) setCategoryId(option.categoryId);
+            }}
+            foods={foods}
+            autoFocus
+            showStatus={!item}
+          />
         </label>
         <label>
           Franja
@@ -485,11 +475,6 @@ function AddFoodSheet({
             ))}
           </div>
         </div>
-
-        <label className="new-check large-check">
-          <input type="checkbox" checked={isNew} onChange={(e) => setIsNew(e.target.checked)} />
-          {t.meals.isNew}
-        </label>
 
         <label>
           Nota

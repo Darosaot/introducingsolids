@@ -10,6 +10,7 @@ import {
   foodsIntroducedBy,
   foodNameKey,
   inferAllergenKeys,
+  isRecentlyIntroduced,
   slugKey,
   weekTargetKeys,
 } from './data';
@@ -126,16 +127,33 @@ describe('filterFoods', () => {
       [status({ name_key: 'huevo', display_name: 'Huevo', is_allergen: true, allergen_keys: ['egg'], reaction: 'ok' })],
     );
 
-    const out = filterFoods(foods, {
-      ...DEFAULT_FOOD_FILTERS,
-      query: 'hue',
-      reaction: 'ok',
-      onlyNew: true,
-      onlyAllergens: true,
-    });
+    const out = filterFoods(
+      foods,
+      {
+        ...DEFAULT_FOOD_FILTERS,
+        query: 'hue',
+        reaction: 'ok',
+        onlyNew: true,
+        onlyAllergens: true,
+      },
+      '2026-07-03',
+    );
 
     expect(out).toHaveLength(1);
     expect(out[0].name).toBe('Huevo');
+  });
+
+  it('el filtro "nuevos" muestra solo los introducidos en la última semana', () => {
+    const foods = aggregateFoods(
+      [
+        meal({ name: 'Huevo', name_key: 'huevo', day: '2026-07-01', is_new: true }),
+        meal({ name: 'Pera', name_key: 'pera', day: '2026-07-14', is_new: true }),
+      ],
+      [],
+    );
+
+    const out = filterFoods(foods, { ...DEFAULT_FOOD_FILTERS, onlyNew: true }, '2026-07-15');
+    expect(out.map((food) => food.name)).toEqual(['Pera']);
   });
 
   it('ordena por fecha más reciente y por recuento', () => {
@@ -150,6 +168,15 @@ describe('filterFoods', () => {
 
     expect(filterFoods(foods, { ...DEFAULT_FOOD_FILTERS, sort: 'last' })[0].name).toBe('Plátano');
     expect(filterFoods(foods, { ...DEFAULT_FOOD_FILTERS, sort: 'count' })[0].count).toBe(2);
+  });
+});
+
+describe('isRecentlyIntroduced', () => {
+  it('detecta primeras veces dentro de la ventana de 7 días, sin contar futuros', () => {
+    const foods = aggregateFoods([meal({ name: 'Pera', name_key: 'pera', day: '2026-07-10' })], []);
+    expect(isRecentlyIntroduced(foods[0], '2026-07-12')).toBe(true);
+    expect(isRecentlyIntroduced(foods[0], '2026-07-20')).toBe(false); // fuera de ventana
+    expect(isRecentlyIntroduced(foods[0], '2026-07-08')).toBe(false); // primera vez en el futuro
   });
 });
 

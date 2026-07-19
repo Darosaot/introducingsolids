@@ -123,6 +123,15 @@ export const t = {
     planned: 'Planificado',
   },
 
+  // Catálogo de alimentos / selector
+  catalog: {
+    label: 'Catálogo',
+    searchPlaceholder: 'Busca en el catálogo o escribe un alimento…',
+    alreadyTried: 'Ya probado',
+    willBeNew: 'Primera vez: se marcará como «Nuevo» automáticamente',
+    manualNotFound: 'no está en el catálogo: se registrará manualmente y quedará guardado para reutilizarlo.',
+  },
+
   // Texturas de los alimentos
   textures: {
     puree: { label: 'Puré', icon: '🥣' },
@@ -205,7 +214,7 @@ export const t = {
     allLiking: 'Todos (le gustó)',
     allReactions: 'Todas (reacciones)',
     unrated: 'Sin evaluar',
-    onlyNew: 'Primeras veces',
+    onlyNew: 'Nuevos (últimos 7 días)',
     onlyAllergens: 'Alérgenos',
     sort: 'Ordenar',
     sortName: 'Nombre',
@@ -260,7 +269,7 @@ export const t = {
     complete: 'Marcar como comido',
     shopping: 'Lista de compra',
     retry: 'Alimentos para reintentar',
-    newThisWeek: 'Ideas para nuevos alimentos',
+    newThisWeek: 'Nuevos esta semana',
     empty: 'No hay alimentos planificados esta semana.',
   },
 

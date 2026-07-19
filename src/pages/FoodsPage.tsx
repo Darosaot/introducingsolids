@@ -13,10 +13,11 @@ import {
   fetchBabyProfile,
   fetchFoodsTried,
   filterFoods,
+  isRecentlyIntroduced,
   updateFoodCategory,
   upsertFoodStatus,
 } from '../lib/data';
-import { fmt, fromKey } from '../lib/date';
+import { dayKey, fmt, fromKey } from '../lib/date';
 import { LIKING_OPTIONS, REACTION_OPTIONS, t } from '../lib/i18n';
 import type { Category, FoodFilters, FoodTried, Liking, ReactionStatus } from '../lib/types';
 
@@ -52,7 +53,8 @@ export function FoodsPage() {
     void load();
   }, [load]);
 
-  const visibleFoods = useMemo(() => filterFoods(foods, filters), [foods, filters]);
+  const todayKey = useMemo(() => dayKey(new Date()), []);
+  const visibleFoods = useMemo(() => filterFoods(foods, filters, todayKey), [foods, filters, todayKey]);
 
   async function saveStatus(food: FoodTried, patch: ReactionPatch, notes: string) {
     if (!session) return;
@@ -140,6 +142,7 @@ export function FoodsPage() {
               categoryName={(food.categoryId && byId[food.categoryId]?.name) || t.foods.noCategory}
               categories={categories}
               ageMonths={ageMonths}
+              isRecent={isRecentlyIntroduced(food, todayKey)}
               onSave={saveStatus}
               onCategory={changeCategory}
             />
@@ -241,6 +244,7 @@ function FoodCard({
   categoryName,
   categories,
   ageMonths,
+  isRecent,
   onSave,
   onCategory,
 }: {
@@ -249,6 +253,7 @@ function FoodCard({
   categoryName: string;
   categories: Category[];
   ageMonths: number | null;
+  isRecent: boolean;
   onSave: (food: FoodTried, patch: ReactionPatch, notes: string) => void;
   onCategory: (food: FoodTried, categoryId: string | null) => void;
 }) {
@@ -266,7 +271,7 @@ function FoodCard({
           </Link>
           <div className="muted small">{categoryName}</div>
         </div>
-        {food.isNew && <span className="new-badge" title={t.foods.newBadge}>✨</span>}
+        {isRecent && <span className="new-badge" title={t.foods.newBadge}>✨</span>}
       </div>
 
       <div className="food-stats">

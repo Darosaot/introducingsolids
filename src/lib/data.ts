@@ -644,7 +644,11 @@ function matchesOptionFilter<T extends string>(value: T | null, filter: T | 'unr
   return true;
 }
 
-export function filterFoods(foods: FoodTried[], filters: FoodFilters): FoodTried[] {
+export function filterFoods(
+  foods: FoodTried[],
+  filters: FoodFilters,
+  todayKey: string = dayKey(new Date()),
+): FoodTried[] {
   const query = foodNameKey(filters.query);
   return foods
     .filter((food) => {
@@ -652,7 +656,7 @@ export function filterFoods(foods: FoodTried[], filters: FoodFilters): FoodTried
       if (filters.categoryId && food.categoryId !== filters.categoryId) return false;
       if (!matchesOptionFilter(food.liking, filters.liking)) return false;
       if (!matchesOptionFilter(food.reaction, filters.reaction)) return false;
-      if (filters.onlyNew && !food.isNew) return false;
+      if (filters.onlyNew && !isRecentlyIntroduced(food, todayKey)) return false;
       if (filters.onlyAllergens && !food.isAllergen) return false;
       return true;
     })
@@ -674,6 +678,25 @@ export function allergenProgress(foods: FoodTried[]): { introduced: number; tota
 
 export function foodsIntroducedBy(foods: FoodTried[], throughDay: string): FoodTried[] {
   return foods.filter((food) => food.firstDay <= throughDay);
+}
+
+/** Días durante los que un alimento se considera "recién introducido". */
+export const RECENT_INTRODUCTION_DAYS = 7;
+
+export function recentIntroductionCutoff(
+  todayKey: string,
+  days = RECENT_INTRODUCTION_DAYS,
+): string {
+  return dayKey(addDays(dateFromKey(todayKey), -days));
+}
+
+/** ¿La primera vez del alimento cae dentro de la ventana reciente (y no en el futuro)? */
+export function isRecentlyIntroduced(
+  food: FoodTried,
+  todayKey: string,
+  days = RECENT_INTRODUCTION_DAYS,
+): boolean {
+  return food.firstDay <= todayKey && food.firstDay >= recentIntroductionCutoff(todayKey, days);
 }
 
 export interface AllergenIntroductionStatus {
@@ -786,7 +809,7 @@ export function buildDashboardSummary(input: {
   plannedToday: PlannedMeal[];
   todayKey: string;
 }): DashboardSummary {
-  const recentThreshold = dayKey(addDays(dateFromKey(input.todayKey), -7));
+  const recentThreshold = recentIntroductionCutoff(input.todayKey);
   const introducedFoods = foodsIntroducedBy(input.foods, input.todayKey);
   const progress = allergenProgress(introducedFoods);
   return {
@@ -794,7 +817,10 @@ export function buildDashboardSummary(input: {
     newFoodsToday: input.todayMeals.filter((m) => m.is_new).length,
     reactionCountToday: input.todayMeals.filter((m) => m.reaction === 'reaction').length,
     hasDayNote: Boolean(input.dayNote?.note?.trim()),
-    recentNewFoods: introducedFoods.filter((f) => f.isNew && f.firstDay >= recentThreshold).slice(0, 6),
+    recentNewFoods: introducedFoods
+      .filter((f) => f.firstDay >= recentThreshold)
+      .sort((a, b) => b.firstDay.localeCompare(a.firstDay))
+      .slice(0, 6),
     reactionsToWatch: introducedFoods.filter((f) => f.reaction === 'reaction').slice(0, 6),
     foodsToRetry: introducedFoods
       .filter((f) => f.liking === 'disliked' || (!f.liking && f.count <= 2))
